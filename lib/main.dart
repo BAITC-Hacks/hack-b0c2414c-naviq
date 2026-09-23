@@ -423,19 +423,21 @@ class _HomeState extends State<Home> {
   Widget build(BuildContext context) {
     final desktop = MediaQuery.sizeOf(context).width >= 980;
     return Scaffold(
-      body: desktop
-          ? Row(
-              children: [
-                _sidebar(),
-                Expanded(child: _workspace()),
-              ],
-            )
-          : Column(
-              children: [
-                _mobileBar(),
-                Expanded(child: _workspace()),
-              ],
-            ),
+      body: AuroraBackground(
+        child: desktop
+            ? Row(
+                children: [
+                  _sidebar(),
+                  Expanded(child: _workspace()),
+                ],
+              )
+            : Column(
+                children: [
+                  _mobileBar(),
+                  Expanded(child: _workspace()),
+                ],
+              ),
+      ),
     );
   }
 
@@ -446,8 +448,15 @@ class _HomeState extends State<Home> {
         width: 36,
         height: 36,
         decoration: BoxDecoration(
-          color: ink,
+          gradient: brandGradient,
           borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: blue.withValues(alpha: .24),
+              blurRadius: 16,
+              offset: const Offset(0, 5),
+            ),
+          ],
         ),
         child: const Icon(
           Icons.assignment_turned_in_outlined,
@@ -483,104 +492,114 @@ class _HomeState extends State<Home> {
     ],
   );
 
-  Widget _sidebar() => Container(
+  Widget _sidebar() => SizedBox(
     width: 232,
-    decoration: const BoxDecoration(
-      color: Colors.white,
-      border: Border(right: BorderSide(color: line)),
-    ),
-    child: SafeArea(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(26, 31, 20, 43),
-            child: _brand(),
-          ),
-          const Padding(
-            padding: EdgeInsets.fromLTRB(27, 0, 16, 12),
-            child: Text(
-              'ПРОСТРАНСТВО',
-              style: TextStyle(
-                color: Color(0xFF9AA0AA),
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 1.4,
+    child: LiquidGlass(
+      blur: true,
+      radius: 0,
+      padding: EdgeInsets.zero,
+      child: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(26, 31, 20, 43),
+              child: _brand(),
+            ),
+            const Padding(
+              padding: EdgeInsets.fromLTRB(27, 0, 16, 12),
+              child: Text(
+                'ПРОСТРАНСТВО',
+                style: TextStyle(
+                  color: Color(0xFF9AA0AA),
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.4,
+                ),
               ),
             ),
-          ),
-          _nav('catalog', Icons.explore_outlined, 'Каталог задач'),
-          if (role == 'business') ...[
-            _nav('mine', Icons.folder_outlined, 'Мои задачи'),
-            _nav('create', Icons.add_circle_outline, 'Создать задачу'),
-          ],
-          if (role == 'team')
-            _nav('sent', Icons.near_me_outlined, 'Мои отклики'),
-          const Spacer(),
-          Padding(
-            padding: const EdgeInsets.all(18),
-            child: Container(
+            _nav('catalog', Icons.explore_outlined, 'Каталог задач'),
+            if (role == 'business') ...[
+              _nav('mine', Icons.folder_outlined, 'Мои задачи'),
+              _nav('create', Icons.add_circle_outline, 'Создать задачу'),
+            ],
+            if (role == 'team')
+              _nav('sent', Icons.near_me_outlined, 'Мои отклики'),
+            const Spacer(),
+            Padding(
               padding: const EdgeInsets.all(18),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF4F7FC),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Icon(
-                    Icons.auto_awesome_outlined,
-                    color: blue,
-                    size: 24,
+              child: Container(
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Color(0xFFDCE8FF),
+                      Color(0xFFEBE3FF),
+                      Color(0xFFFCE6E4),
+                    ],
                   ),
-                  const SizedBox(height: 13),
-                  const Text(
-                    'От идеи — к результату',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
-                      letterSpacing: -.2,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Colors.white),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(
+                      Icons.auto_awesome_outlined,
+                      color: blue,
+                      size: 24,
                     ),
-                  ),
-                  const SizedBox(height: 7),
-                  const Text(
-                    'Помощник уточнит детали и соберёт понятную задачу.',
-                    style: TextStyle(color: muted, fontSize: 13, height: 1.5),
-                  ),
-                  if (role == 'business') ...[
-                    const SizedBox(height: 12),
-                    TextButton(
-                      onPressed: resetCreate,
-                      style: TextButton.styleFrom(
-                        padding: EdgeInsets.zero,
-                        minimumSize: const Size(0, 32),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text('Создать задачу'),
-                          SizedBox(width: 8),
-                          Icon(Icons.arrow_forward_rounded, size: 16),
-                        ],
+                    const SizedBox(height: 13),
+                    const Text(
+                      'От идеи — к результату',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                        letterSpacing: -.2,
                       ),
                     ),
+                    const SizedBox(height: 7),
+                    const Text(
+                      'Помощник уточнит детали и соберёт понятную задачу.',
+                      style: TextStyle(color: muted, fontSize: 13, height: 1.5),
+                    ),
+                    if (role == 'business') ...[
+                      const SizedBox(height: 12),
+                      TextButton(
+                        onPressed: resetCreate,
+                        style: TextButton.styleFrom(
+                          padding: EdgeInsets.zero,
+                          minimumSize: const Size(0, 32),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text('Создать задачу'),
+                            SizedBox(width: 8),
+                            Icon(Icons.arrow_forward_rounded, size: 16),
+                          ],
+                        ),
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
             ),
-          ),
-          const Padding(
-            padding: EdgeInsets.fromLTRB(27, 2, 20, 24),
-            child: Text(
-              'AI SANA  /  NavIQ',
-              style: TextStyle(
-                color: Color(0xFF9AA0AA),
-                fontSize: 11,
-                letterSpacing: .7,
+            const Padding(
+              padding: EdgeInsets.fromLTRB(27, 2, 20, 24),
+              child: Text(
+                'AI SANA  /  NavIQ',
+                style: TextStyle(
+                  color: Color(0xFF9AA0AA),
+                  fontSize: 11,
+                  letterSpacing: .7,
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     ),
   );
@@ -596,38 +615,53 @@ class _HomeState extends State<Home> {
         : null;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 3),
-      child: Material(
-        color: active ? const Color(0xFFEAF2FF) : Colors.transparent,
-        borderRadius: BorderRadius.circular(14),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(14),
-          onTap: () => id == 'create' ? resetCreate() : navigate(id),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-            child: Row(
-              children: [
-                Icon(icon, color: active ? blue : muted, size: 21),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    label,
-                    style: TextStyle(
-                      color: active ? blue : ink,
-                      fontWeight: active ? FontWeight.w600 : FontWeight.w500,
-                      fontSize: 14,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: active ? brandGradient : null,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: active
+              ? [
+                  BoxShadow(
+                    color: blue.withValues(alpha: .23),
+                    blurRadius: 17,
+                    offset: const Offset(0, 5),
+                  ),
+                ]
+              : null,
+        ),
+        child: Material(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(16),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(14),
+            onTap: () => id == 'create' ? resetCreate() : navigate(id),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+              child: Row(
+                children: [
+                  Icon(icon, color: active ? Colors.white : muted, size: 21),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      label,
+                      style: TextStyle(
+                        color: active ? Colors.white : ink,
+                        fontWeight: active ? FontWeight.w600 : FontWeight.w500,
+                        fontSize: 14,
+                      ),
                     ),
                   ),
-                ),
-                if (count != null)
-                  Text(
-                    '$count',
-                    style: TextStyle(
-                      color: active ? blue : const Color(0xFF9AA0AA),
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
+                  if (count != null)
+                    Text(
+                      '$count',
+                      style: TextStyle(
+                        color: active ? Colors.white : muted,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                  ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -635,40 +669,40 @@ class _HomeState extends State<Home> {
     );
   }
 
-  Widget _mobileBar() => Container(
+  Widget _mobileBar() => SizedBox(
     width: double.infinity,
-    decoration: const BoxDecoration(
-      color: Colors.white,
-      border: Border(bottom: BorderSide(color: line)),
-    ),
-    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-    child: SafeArea(
-      bottom: false,
-      child: LayoutBuilder(
-        builder: (context, box) {
-          final nav = Wrap(
-            spacing: 3,
-            children: [
-              _compactNav('catalog', 'Каталог'),
-              if (role == 'business') ...[
-                _compactNav('mine', 'Мои задачи'),
-                _compactNav('create', 'Создать'),
-              ],
-              if (role == 'team') _compactNav('sent', 'Отклики'),
-            ],
-          );
-          if (box.maxWidth < 520) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    child: LiquidGlass(
+      blur: true,
+      radius: 0,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      child: SafeArea(
+        bottom: false,
+        child: LayoutBuilder(
+          builder: (context, box) {
+            final nav = Wrap(
+              spacing: 3,
               children: [
-                _brand(compact: true),
-                const SizedBox(height: 12),
-                nav,
+                _compactNav('catalog', 'Каталог'),
+                if (role == 'business') ...[
+                  _compactNav('mine', 'Мои задачи'),
+                  _compactNav('create', 'Создать'),
+                ],
+                if (role == 'team') _compactNav('sent', 'Отклики'),
               ],
             );
-          }
-          return Row(children: [_brand(compact: true), const Spacer(), nav]);
-        },
+            if (box.maxWidth < 520) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _brand(compact: true),
+                  const SizedBox(height: 12),
+                  nav,
+                ],
+              );
+            }
+            return Row(children: [_brand(compact: true), const Spacer(), nav]);
+          },
+        ),
       ),
     ),
   );
@@ -677,8 +711,8 @@ class _HomeState extends State<Home> {
     return TextButton(
       onPressed: () => id == 'create' ? resetCreate() : navigate(id),
       style: TextButton.styleFrom(
-        backgroundColor: active ? const Color(0xFFEAF2FF) : null,
-        foregroundColor: active ? blue : muted,
+        backgroundColor: active ? blue : null,
+        foregroundColor: active ? Colors.white : muted,
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       ),
       child: Text(label),
@@ -731,7 +765,9 @@ class _HomeState extends State<Home> {
     ],
   );
 
-  Widget _topbar() => Container(
+  Widget _topbar() => LiquidGlass(
+    blur: true,
+    radius: 0,
     padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 16),
     child: LayoutBuilder(
       builder: (context, box) {
@@ -791,6 +827,14 @@ class _HomeState extends State<Home> {
             },
           ),
         );
+        if (box.maxWidth < 340) {
+          return Wrap(
+            alignment: WrapAlignment.end,
+            spacing: 12,
+            runSpacing: 10,
+            children: [_roleToggle(), picker],
+          );
+        }
         return Row(
           children: [
             if (box.maxWidth > 690) ...[
@@ -814,8 +858,9 @@ class _HomeState extends State<Home> {
   Widget _roleToggle() => Container(
     padding: const EdgeInsets.all(4),
     decoration: BoxDecoration(
-      color: const Color(0xFFEAEDF2),
+      color: blue.withValues(alpha: .07),
       borderRadius: BorderRadius.circular(99),
+      border: Border.all(color: Colors.white.withValues(alpha: .9)),
     ),
     child: Row(
       mainAxisSize: MainAxisSize.min,
@@ -832,7 +877,10 @@ class _HomeState extends State<Home> {
       duration: const Duration(milliseconds: 180),
       padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
       decoration: BoxDecoration(
-        color: role == value ? Colors.white : Colors.transparent,
+        color: role == value ? null : Colors.transparent,
+        gradient: role == value
+            ? const LinearGradient(colors: [Colors.white, Color(0xFFEEF1FF)])
+            : null,
         borderRadius: BorderRadius.circular(99),
         boxShadow: role == value
             ? const [
@@ -847,7 +895,7 @@ class _HomeState extends State<Home> {
       child: Text(
         label,
         style: TextStyle(
-          color: role == value ? ink : muted,
+          color: role == value ? blue : muted,
           fontWeight: FontWeight.w600,
           fontSize: 12,
         ),
@@ -922,43 +970,7 @@ class _HomeState extends State<Home> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'ВОЗМОЖНОСТИ ДЛЯ РОСТА',
-          style: TextStyle(
-            color: blue,
-            fontSize: 10,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 1.5,
-          ),
-        ),
-        const SizedBox(height: 10),
-        _pageTitle(
-          'Каталог задач',
-          'Идеи бизнеса, которые ждут вашу команду.',
-          action: role == 'business'
-              ? FilledButton.icon(
-                  onPressed: resetCreate,
-                  icon: const Icon(Icons.add_rounded, size: 20),
-                  label: const Text('Создать задачу'),
-                )
-              : null,
-        ),
-        const SizedBox(height: 17),
-        Wrap(
-          spacing: 20,
-          runSpacing: 8,
-          children: [
-            _inlineMetric(
-              Icons.grid_view_rounded,
-              '${catalog.length} открытых задач',
-            ),
-            _inlineMetric(Icons.verified_outlined, '$ready готовы к старту'),
-            const Text(
-              'Все уровни готовности — в одном месте',
-              style: TextStyle(color: muted, fontSize: 12),
-            ),
-          ],
-        ),
+        _catalogHero(ready),
         const SizedBox(height: 28),
         LayoutBuilder(
           builder: (context, box) {
@@ -1017,19 +1029,23 @@ class _HomeState extends State<Home> {
               avatar: Icon(
                 name == 'Все темы' ? Icons.apps_rounded : topicIcon(name),
                 size: 16,
-                color: active ? blue : topicColor(name),
+                color: active ? Colors.white : topicColor(name),
               ),
               labelStyle: TextStyle(
-                color: active ? blue : muted,
+                color: active ? Colors.white : topicColor(name),
                 fontSize: 13,
                 fontWeight: active ? FontWeight.w600 : FontWeight.w500,
               ),
-              side: BorderSide(color: active ? const Color(0xFFBDD4F5) : line),
+              side: BorderSide(
+                color: active
+                    ? (name == 'Все темы' ? blue : topicColor(name))
+                    : Colors.white,
+              ),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(99),
               ),
-              selectedColor: const Color(0xFFEAF2FF),
-              backgroundColor: Colors.white,
+              selectedColor: name == 'Все темы' ? blue : topicColor(name),
+              backgroundColor: Colors.white.withValues(alpha: .7),
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
               onSelected: (_) => setState(() => topic = name),
             );
@@ -1121,6 +1137,142 @@ class _HomeState extends State<Home> {
     );
   }
 
+  Widget _catalogHero(int ready) => LayoutBuilder(
+    builder: (context, box) {
+      final wide = box.maxWidth >= 780;
+      final narrow = box.maxWidth < 500;
+      return Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(30),
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFFD5E4FF), Color(0xFFE1D9FC), Color(0xFFD1F0EB)],
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: violet.withValues(alpha: .1),
+              blurRadius: 35,
+              offset: const Offset(0, 12),
+            ),
+          ],
+        ),
+        child: LiquidGlass(
+          blur: true,
+          radius: 30,
+          tint: violet,
+          padding: EdgeInsets.all(narrow ? 22 : 30),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: .76),
+                        borderRadius: BorderRadius.circular(99),
+                        border: Border.all(color: Colors.white),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.auto_awesome_rounded,
+                            size: 14,
+                            color: violet,
+                          ),
+                          SizedBox(width: 7),
+                          Text(
+                            'ИДЕИ ВСТРЕЧАЮТ ТАЛАНТЫ',
+                            style: TextStyle(
+                              color: violet,
+                              fontSize: 9,
+                              letterSpacing: 1.15,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Каталог задач',
+                      style: Theme.of(context).textTheme.headlineLarge
+                          ?.copyWith(fontSize: narrow ? 30 : 38),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Реальные задачи. Сильные команды.\nБольшие возможности вместе.',
+                      style: TextStyle(
+                        color: muted,
+                        fontSize: 15,
+                        height: 1.55,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Wrap(
+                      spacing: 9,
+                      runSpacing: 9,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        if (role == 'business')
+                          FilledButton.icon(
+                            onPressed: resetCreate,
+                            icon: const Icon(Icons.add_rounded, size: 18),
+                            label: const Text('Создать задачу'),
+                          ),
+                        _heroMetric(
+                          Icons.grid_view_rounded,
+                          '${catalog.length} задач',
+                          blue,
+                        ),
+                        _heroMetric(
+                          Icons.verified_outlined,
+                          '$ready готовы к старту',
+                          teal,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              if (wide) ...[const SizedBox(width: 20), const GlassOrbit()],
+            ],
+          ),
+        ),
+      );
+    },
+  );
+
+  Widget _heroMetric(IconData icon, String text, Color color) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 10),
+    decoration: BoxDecoration(
+      color: Colors.white.withValues(alpha: .64),
+      borderRadius: BorderRadius.circular(99),
+      border: Border.all(color: Colors.white),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 15, color: color),
+        const SizedBox(width: 6),
+        Text(
+          text,
+          style: TextStyle(
+            color: color,
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    ),
+  );
+
   Widget _inlineMetric(IconData icon, String text) => Row(
     mainAxisSize: MainAxisSize.min,
     children: [
@@ -1181,6 +1333,7 @@ class _HomeState extends State<Home> {
         : f['topic'] as String;
     final score = rating['score'] as int;
     return HoverCard(
+      accent: topicColor(category),
       onTap: () => openTask(task),
       padding: const EdgeInsets.all(22),
       child: Column(
@@ -1734,12 +1887,10 @@ class _HomeState extends State<Home> {
         ),
         padding: const EdgeInsets.all(30),
       );
-      final guide = Container(
+      final guide = LiquidGlass(
+        tint: violet,
+        blur: true,
         padding: const EdgeInsets.all(26),
-        decoration: BoxDecoration(
-          color: const Color(0xFFEDF3FD),
-          borderRadius: BorderRadius.circular(24),
-        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
