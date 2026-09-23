@@ -36,9 +36,11 @@ class Home extends StatefulWidget {
 
 class _HomeState extends State<Home> {
   final api = Api();
+  final _responseKey = GlobalKey();
   String role = 'business', profile = 'business-1', page = 'catalog';
   String topic = 'Все темы', level = 'Все уровни', search = '';
   bool busy = false;
+  bool inboxLoading = false;
   String? banner;
   List<dynamic> catalog = [],
       mine = [],
@@ -139,7 +141,28 @@ class _HomeState extends State<Home> {
     } catch (e) {
       if (mounted) setState(() => banner = e.toString());
     } finally {
-      if (mounted) setState(() => busy = false);
+      if (mounted) {
+        setState(() => busy = false);
+        if (banner != null) {
+          final messenger = ScaffoldMessenger.of(context);
+          messenger.hideCurrentSnackBar();
+          messenger.showSnackBar(
+            SnackBar(
+              content: Text(banner!),
+              behavior: SnackBarBehavior.floating,
+              backgroundColor: ink,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              action: SnackBarAction(
+                label: 'Закрыть',
+                textColor: const Color(0xFFB6D3FF),
+                onPressed: messenger.hideCurrentSnackBar,
+              ),
+            ),
+          );
+        }
+      }
     }
   }
 
@@ -321,20 +344,35 @@ class _HomeState extends State<Home> {
 
   Future<void> loadInbox() async {
     if (selected == null) return;
+    final taskId = selected!['id'];
+    final ownerId = profile;
+    setState(() => inboxLoading = true);
     try {
       final result = await api.call(
         'GET',
-        '/api/tasks/${selected!['id']}/proposals?owner=$profile',
+        '/api/tasks/$taskId/proposals?owner=$ownerId',
       );
-      if (mounted) setState(() => inbox = result);
+      if (mounted && selected?['id'] == taskId && profile == ownerId) {
+        setState(() {
+          inbox = result;
+          inboxLoading = false;
+        });
+      }
     } catch (e) {
-      if (mounted) setState(() => banner = e.toString());
+      if (mounted && selected?['id'] == taskId && profile == ownerId) {
+        setState(() {
+          banner = e.toString();
+          inboxLoading = false;
+        });
+      }
     }
   }
 
   void openTask(Map<String, dynamic> task) {
     setState(() {
       selected = task;
+      inbox = [];
+      inboxLoading = role == 'business' && task['owner'] == profile;
       page = 'detail';
       banner = null;
     });
@@ -401,126 +439,194 @@ class _HomeState extends State<Home> {
     );
   }
 
-  Widget _sidebar() {
-    return Container(
-      width: 252,
-      color: ink,
-      child: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(26, 30, 18, 36),
-              child: Row(
-                children: [
-                  Container(
-                    width: 36,
-                    height: 36,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: blue,
-                      borderRadius: BorderRadius.circular(11),
-                    ),
-                    child: const Icon(
-                      Icons.grid_view_rounded,
-                      color: Colors.white,
-                      size: 21,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  const Text(
-                    'ПАСПОРТ',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 18,
-                      letterSpacing: 1.8,
-                    ),
-                  ),
-                ],
+  Widget _brand({bool compact = false}) => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          color: ink,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: const Icon(
+          Icons.assignment_turned_in_outlined,
+          color: Colors.white,
+          size: 21,
+        ),
+      ),
+      const SizedBox(width: 11),
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Паспорт',
+            style: TextStyle(
+              color: ink,
+              fontSize: compact ? 19 : 21,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -.6,
+            ),
+          ),
+          if (!compact)
+            const Text(
+              'ЗАДАЧИ И КОМАНДЫ',
+              style: TextStyle(
+                color: muted,
+                fontSize: 9,
+                letterSpacing: 1.6,
+                fontWeight: FontWeight.w600,
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 22),
-              child: Text(
-                'РАБОЧЕЕ ПРОСТРАНСТВО',
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: .48),
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1.2,
-                ),
+        ],
+      ),
+    ],
+  );
+
+  Widget _sidebar() => Container(
+    width: 232,
+    decoration: const BoxDecoration(
+      color: Colors.white,
+      border: Border(right: BorderSide(color: line)),
+    ),
+    child: SafeArea(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(26, 31, 20, 43),
+            child: _brand(),
+          ),
+          const Padding(
+            padding: EdgeInsets.fromLTRB(27, 0, 16, 12),
+            child: Text(
+              'ПРОСТРАНСТВО',
+              style: TextStyle(
+                color: Color(0xFF9AA0AA),
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1.4,
               ),
             ),
-            const SizedBox(height: 14),
-            _nav('catalog', Icons.dashboard_outlined, 'Каталог задач'),
-            if (role == 'business') ...[
-              _nav('create', Icons.add_box_outlined, 'Создать задачу'),
-              _nav('mine', Icons.folder_open_outlined, 'Мои задачи'),
-            ],
-            if (role == 'team')
-              _nav('sent', Icons.send_outlined, 'Мои отклики'),
-            const Spacer(),
-            Padding(
+          ),
+          _nav('catalog', Icons.explore_outlined, 'Каталог задач'),
+          if (role == 'business') ...[
+            _nav('mine', Icons.folder_outlined, 'Мои задачи'),
+            _nav('create', Icons.add_circle_outline, 'Создать задачу'),
+          ],
+          if (role == 'team')
+            _nav('sent', Icons.near_me_outlined, 'Мои отклики'),
+          const Spacer(),
+          Padding(
+            padding: const EdgeInsets.all(18),
+            child: Container(
               padding: const EdgeInsets.all(18),
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: .07),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: const Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(Icons.lightbulb_outline, color: Color(0xFF9AAEFF)),
-                    SizedBox(height: 9),
-                    Text(
-                      'Сильная задача начинается с ясного описания.',
-                      style: TextStyle(
-                        color: Colors.white,
-                        height: 1.4,
-                        fontSize: 13,
+              decoration: BoxDecoration(
+                color: const Color(0xFFF4F7FC),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(
+                    Icons.auto_awesome_outlined,
+                    color: blue,
+                    size: 24,
+                  ),
+                  const SizedBox(height: 13),
+                  const Text(
+                    'От идеи — к результату',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                      letterSpacing: -.2,
+                    ),
+                  ),
+                  const SizedBox(height: 7),
+                  const Text(
+                    'Помощник уточнит детали и соберёт понятную задачу.',
+                    style: TextStyle(color: muted, fontSize: 13, height: 1.5),
+                  ),
+                  if (role == 'business') ...[
+                    const SizedBox(height: 12),
+                    TextButton(
+                      onPressed: resetCreate,
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        minimumSize: const Size(0, 32),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text('Создать задачу'),
+                          SizedBox(width: 8),
+                          Icon(Icons.arrow_forward_rounded, size: 16),
+                        ],
                       ),
                     ),
                   ],
-                ),
+                ],
               ),
             ),
-            const SizedBox(height: 10),
-          ],
-        ),
+          ),
+          const Padding(
+            padding: EdgeInsets.fromLTRB(27, 2, 20, 24),
+            child: Text(
+              'AI SANA  /  NavIQ',
+              style: TextStyle(
+                color: Color(0xFF9AA0AA),
+                fontSize: 11,
+                letterSpacing: .7,
+              ),
+            ),
+          ),
+        ],
       ),
-    );
-  }
+    ),
+  );
 
   Widget _nav(String id, IconData icon, String label) {
     final active = page == id || (id == 'catalog' && page == 'detail');
+    final count = id == 'catalog'
+        ? catalog.length
+        : id == 'mine'
+        ? mine.length
+        : id == 'sent'
+        ? sent.length
+        : null;
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 3),
       child: Material(
-        color: active ? const Color(0xFF304365) : Colors.transparent,
-        borderRadius: BorderRadius.circular(11),
+        color: active ? const Color(0xFFEAF2FF) : Colors.transparent,
+        borderRadius: BorderRadius.circular(14),
         child: InkWell(
-          borderRadius: BorderRadius.circular(11),
+          borderRadius: BorderRadius.circular(14),
           onTap: () => id == 'create' ? resetCreate() : navigate(id),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
             child: Row(
               children: [
-                Icon(
-                  icon,
-                  color: active ? Colors.white : const Color(0xFF98A6BE),
-                  size: 20,
-                ),
-                const SizedBox(width: 13),
-                Text(
-                  label,
-                  style: TextStyle(
-                    color: active ? Colors.white : const Color(0xFFC0C9D9),
-                    fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-                    fontSize: 14,
+                Icon(icon, color: active ? blue : muted, size: 21),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    label,
+                    style: TextStyle(
+                      color: active ? blue : ink,
+                      fontWeight: active ? FontWeight.w600 : FontWeight.w500,
+                      fontSize: 14,
+                    ),
                   ),
                 ),
+                if (count != null)
+                  Text(
+                    '$count',
+                    style: TextStyle(
+                      color: active ? blue : const Color(0xFF9AA0AA),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
               ],
             ),
           ),
@@ -530,56 +636,77 @@ class _HomeState extends State<Home> {
   }
 
   Widget _mobileBar() => Container(
-    color: ink,
-    padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+    width: double.infinity,
+    decoration: const BoxDecoration(
+      color: Colors.white,
+      border: Border(bottom: BorderSide(color: line)),
+    ),
+    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
     child: SafeArea(
       bottom: false,
-      child: Wrap(
-        alignment: WrapAlignment.spaceBetween,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        spacing: 8,
-        runSpacing: 8,
-        children: [
-          const Text(
-            'ПАСПОРТ',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 1.5,
-            ),
-          ),
-          TextButton(
-            onPressed: () => navigate('catalog'),
-            child: const Text('Каталог'),
-          ),
-          if (role == 'business')
-            TextButton(onPressed: resetCreate, child: const Text('Создать')),
-          if (role == 'business')
-            TextButton(
-              onPressed: () => navigate('mine'),
-              child: const Text('Мои'),
-            ),
-          if (role == 'team')
-            TextButton(
-              onPressed: () => navigate('sent'),
-              child: const Text('Отклики'),
-            ),
-        ],
+      child: LayoutBuilder(
+        builder: (context, box) {
+          final nav = Wrap(
+            spacing: 3,
+            children: [
+              _compactNav('catalog', 'Каталог'),
+              if (role == 'business') ...[
+                _compactNav('mine', 'Мои задачи'),
+                _compactNav('create', 'Создать'),
+              ],
+              if (role == 'team') _compactNav('sent', 'Отклики'),
+            ],
+          );
+          if (box.maxWidth < 520) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _brand(compact: true),
+                const SizedBox(height: 12),
+                nav,
+              ],
+            );
+          }
+          return Row(children: [_brand(compact: true), const Spacer(), nav]);
+        },
       ),
     ),
   );
+  Widget _compactNav(String id, String label) {
+    final active = page == id || (page == 'detail' && id == 'catalog');
+    return TextButton(
+      onPressed: () => id == 'create' ? resetCreate() : navigate(id),
+      style: TextButton.styleFrom(
+        backgroundColor: active ? const Color(0xFFEAF2FF) : null,
+        foregroundColor: active ? blue : muted,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      ),
+      child: Text(label),
+    );
+  }
+
   Widget _workspace() => Column(
     children: [
       _topbar(),
+      if (busy)
+        const LinearProgressIndicator(
+          minHeight: 2,
+          color: blue,
+          backgroundColor: line,
+        ),
       Expanded(
         child: SingleChildScrollView(
           key: ValueKey('$page-${selected?['id'] ?? ''}'),
           child: Center(
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1260),
+              constraints: const BoxConstraints(maxWidth: 1300),
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(22, 30, 22, 54),
+                padding: EdgeInsets.fromLTRB(
+                  MediaQuery.sizeOf(context).width > 1100 ? 38 : 22,
+                  30,
+                  MediaQuery.sizeOf(context).width > 1100 ? 38 : 22,
+                  54,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -603,34 +730,43 @@ class _HomeState extends State<Home> {
       ),
     ],
   );
+
   Widget _topbar() => Container(
-    height: 76,
-    padding: const EdgeInsets.symmetric(horizontal: 20),
-    decoration: const BoxDecoration(
-      color: Colors.white,
-      border: Border(bottom: BorderSide(color: line)),
-    ),
-    child: Row(
-      children: [
-        if (MediaQuery.sizeOf(context).width >= 700)
-          Expanded(
-            child: Text(
-              role == 'business'
-                  ? 'Пространство бизнеса'
-                  : 'Пространство команды',
-              style: const TextStyle(color: muted, fontWeight: FontWeight.w600),
-            ),
-          ),
-        _roleToggle(),
-        const SizedBox(width: 10),
-        SizedBox(
-          width: MediaQuery.sizeOf(context).width < 700 ? 155 : 190,
+    padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 16),
+    child: LayoutBuilder(
+      builder: (context, box) {
+        final picker = SizedBox(
+          width: box.maxWidth < 440 ? 145 : 180,
           child: DropdownButtonFormField<String>(
             key: ValueKey('$role-$profile'),
             initialValue: profile,
             isExpanded: true,
-            decoration: const InputDecoration(
-              contentPadding: EdgeInsets.symmetric(
+            icon: const Icon(
+              Icons.keyboard_arrow_down_rounded,
+              size: 18,
+              color: muted,
+            ),
+            borderRadius: BorderRadius.circular(18),
+            decoration: InputDecoration(
+              fillColor: Colors.white,
+              prefixIcon: box.maxWidth > 440
+                  ? Padding(
+                      padding: const EdgeInsets.all(10),
+                      child: CircleAvatar(
+                        radius: 12,
+                        backgroundColor: const Color(0xFFEAF2FF),
+                        child: Text(
+                          profileName.isEmpty ? 'P' : profileName[0],
+                          style: const TextStyle(
+                            color: blue,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    )
+                  : null,
+              contentPadding: const EdgeInsets.symmetric(
                 horizontal: 12,
                 vertical: 10,
               ),
@@ -642,6 +778,10 @@ class _HomeState extends State<Home> {
                     child: Text(
                       item['name'] as String,
                       overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
                 )
@@ -650,17 +790,35 @@ class _HomeState extends State<Home> {
               if (value != null) switchProfile(value);
             },
           ),
-        ),
-      ],
+        );
+        return Row(
+          children: [
+            if (box.maxWidth > 690) ...[
+              const Icon(Icons.workspaces_outline, size: 18, color: muted),
+              const SizedBox(width: 9),
+              const Text(
+                'Рабочее пространство',
+                style: TextStyle(color: muted, fontSize: 13),
+              ),
+              const Spacer(),
+            ] else
+              const Spacer(),
+            _roleToggle(),
+            const SizedBox(width: 12),
+            picker,
+          ],
+        );
+      },
     ),
   );
   Widget _roleToggle() => Container(
     padding: const EdgeInsets.all(4),
     decoration: BoxDecoration(
-      color: canvas,
-      borderRadius: BorderRadius.circular(12),
+      color: const Color(0xFFEAEDF2),
+      borderRadius: BorderRadius.circular(99),
     ),
     child: Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
         _roleButton('business', 'Бизнес'),
         _roleButton('team', 'Команда'),
@@ -668,23 +826,30 @@ class _HomeState extends State<Home> {
     ),
   );
   Widget _roleButton(String value, String label) => InkWell(
-    onTap: () => switchRole(value),
-    borderRadius: BorderRadius.circular(9),
-    child: Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+    onTap: busy ? null : () => switchRole(value),
+    borderRadius: BorderRadius.circular(99),
+    child: AnimatedContainer(
+      duration: const Duration(milliseconds: 180),
+      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
       decoration: BoxDecoration(
         color: role == value ? Colors.white : Colors.transparent,
-        borderRadius: BorderRadius.circular(9),
+        borderRadius: BorderRadius.circular(99),
         boxShadow: role == value
-            ? const [BoxShadow(color: Color(0x12000000), blurRadius: 6)]
+            ? const [
+                BoxShadow(
+                  color: Color(0x10000000),
+                  blurRadius: 5,
+                  offset: Offset(0, 1),
+                ),
+              ]
             : null,
       ),
       child: Text(
         label,
         style: TextStyle(
           color: role == value ? ink : muted,
-          fontWeight: FontWeight.w700,
-          fontSize: 13,
+          fontWeight: FontWeight.w600,
+          fontSize: 12,
         ),
       ),
     ),
@@ -703,15 +868,47 @@ class _HomeState extends State<Home> {
         Expanded(
           child: Text(banner!, style: const TextStyle(color: ink)),
         ),
+        IconButton(
+          tooltip: 'Закрыть сообщение',
+          onPressed: () => setState(() => banner = null),
+          icon: const Icon(Icons.close_rounded, size: 18, color: blue),
+        ),
       ],
     ),
   );
 
+  String _companyName(String owner) {
+    for (final business in businesses) {
+      if (business['id'] == owner) return business['name'].toString();
+    }
+    return 'Бизнес';
+  }
+
+  String _responseLabel(int count) {
+    final n = count % 100;
+    final word = n >= 11 && n <= 14
+        ? 'откликов'
+        : count % 10 == 1
+        ? 'отклик'
+        : count % 10 >= 2 && count % 10 <= 4
+        ? 'отклика'
+        : 'откликов';
+    return '$count $word';
+  }
+
+  void _clearFilters() {
+    searchInput.clear();
+    setState(() {
+      search = '';
+      topic = 'Все темы';
+      level = 'Все уровни';
+    });
+  }
+
   Widget _catalogPage() {
     final filtered = catalog.where((item) {
-      final task = Map<String, dynamic>.from(item);
-      final f = Map<String, dynamic>.from(task['fields']);
-      final r = Map<String, dynamic>.from(task['rating']);
+      final f = Map<String, dynamic>.from(item['fields']),
+          r = Map<String, dynamic>.from(item['rating']);
       return (topic == 'Все темы' || f['topic'] == topic) &&
           (level == 'Все уровни' || r['level'] == level) &&
           (search.isEmpty ||
@@ -719,101 +916,190 @@ class _HomeState extends State<Home> {
                   .toLowerCase()
                   .contains(search.toLowerCase()));
     }).toList();
+    final ready = catalog
+        .where((item) => (item['rating']['score'] as int) >= 70)
+        .length;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        const Text(
+          'ВОЗМОЖНОСТИ ДЛЯ РОСТА',
+          style: TextStyle(
+            color: blue,
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 1.5,
+          ),
+        ),
+        const SizedBox(height: 10),
         _pageTitle(
           'Каталог задач',
-          'Реальные задачи бизнеса. Чем полнее карточка, тем выше она в каталоге.',
+          'Идеи бизнеса, которые ждут вашу команду.',
           action: role == 'business'
               ? FilledButton.icon(
                   onPressed: resetCreate,
-                  icon: const Icon(Icons.add),
+                  icon: const Icon(Icons.add_rounded, size: 20),
                   label: const Text('Создать задачу'),
                 )
               : null,
         ),
-        const SizedBox(height: 26),
-        surface(
-          LayoutBuilder(
-            builder: (context, box) {
-              final query = TextField(
-                controller: searchInput,
-                onChanged: (v) => setState(() => search = v),
-                decoration: const InputDecoration(
-                  prefixIcon: Icon(Icons.search),
-                  hintText: 'Поиск по задачам',
-                ),
-              );
-              final topicFilter = _dropdown(
-                topic,
-                topics,
-                (v) => setState(() => topic = v),
-              );
-              final levelFilter = _dropdown(
-                level,
-                levels,
-                (v) => setState(() => level = v),
-              );
-              if (box.maxWidth < 650) {
-                return Column(
-                  children: [
-                    query,
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        Expanded(child: topicFilter),
-                        const SizedBox(width: 10),
-                        Expanded(child: levelFilter),
-                      ],
-                    ),
-                  ],
-                );
-              }
-              return Row(
-                children: [
-                  Expanded(child: query),
-                  const SizedBox(width: 12),
-                  SizedBox(width: 170, child: topicFilter),
-                  const SizedBox(width: 12),
-                  SizedBox(width: 180, child: levelFilter),
-                ],
-              );
-            },
-          ),
-          padding: const EdgeInsets.all(16),
+        const SizedBox(height: 17),
+        Wrap(
+          spacing: 20,
+          runSpacing: 8,
+          children: [
+            _inlineMetric(
+              Icons.grid_view_rounded,
+              '${catalog.length} открытых задач',
+            ),
+            _inlineMetric(Icons.verified_outlined, '$ready готовы к старту'),
+            const Text(
+              'Все уровни готовности — в одном месте',
+              style: TextStyle(color: muted, fontSize: 12),
+            ),
+          ],
         ),
-        const SizedBox(height: 21),
+        const SizedBox(height: 28),
+        LayoutBuilder(
+          builder: (context, box) {
+            final query = TextField(
+              controller: searchInput,
+              onChanged: (value) => setState(() => search = value),
+              decoration: InputDecoration(
+                fillColor: Colors.white,
+                prefixIcon: const Icon(
+                  Icons.search_rounded,
+                  size: 23,
+                  color: muted,
+                ),
+                hintText: 'Какую задачу вы ищете?',
+                suffixIcon: search.isEmpty
+                    ? null
+                    : IconButton(
+                        tooltip: 'Очистить поиск',
+                        onPressed: () {
+                          searchInput.clear();
+                          setState(() => search = '');
+                        },
+                        icon: const Icon(Icons.close_rounded, size: 18),
+                      ),
+              ),
+            );
+            final readiness = _dropdown(
+              level,
+              levels,
+              (v) => setState(() => level = v),
+            );
+            if (box.maxWidth < 520) {
+              return Column(
+                children: [query, const SizedBox(height: 10), readiness],
+              );
+            }
+            return Row(
+              children: [
+                Expanded(child: query),
+                const SizedBox(width: 12),
+                SizedBox(width: 204, child: readiness),
+              ],
+            );
+          },
+        ),
+        const SizedBox(height: 16),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: topics.map((name) {
+            final active = topic == name;
+            return ChoiceChip(
+              label: Text(name),
+              selected: active,
+              showCheckmark: false,
+              avatar: Icon(
+                name == 'Все темы' ? Icons.apps_rounded : topicIcon(name),
+                size: 16,
+                color: active ? blue : topicColor(name),
+              ),
+              labelStyle: TextStyle(
+                color: active ? blue : muted,
+                fontSize: 13,
+                fontWeight: active ? FontWeight.w600 : FontWeight.w500,
+              ),
+              side: BorderSide(color: active ? const Color(0xFFBDD4F5) : line),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(99),
+              ),
+              selectedColor: const Color(0xFFEAF2FF),
+              backgroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+              onSelected: (_) => setState(() => topic = name),
+            );
+          }).toList(),
+        ),
+        const SizedBox(height: 28),
         Row(
           children: [
-            Text('Все задачи', style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(width: 10),
             Text(
-              '${filtered.length}',
-              style: const TextStyle(color: muted, fontWeight: FontWeight.bold),
+              topic == 'Все темы' ? 'Все задачи' : topic,
+              style: const TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w600,
+                letterSpacing: -.3,
+              ),
+            ),
+            const SizedBox(width: 9),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEAEDF2),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                '${filtered.length}',
+                style: const TextStyle(
+                  color: muted,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
             const Spacer(),
-            const Icon(Icons.sort, color: muted, size: 18),
-            const SizedBox(width: 6),
-            const Text('По рейтингу', style: TextStyle(color: muted)),
+            if (search.isNotEmpty ||
+                topic != 'Все темы' ||
+                level != 'Все уровни')
+              TextButton(
+                onPressed: _clearFilters,
+                child: const Text('Сбросить'),
+              ),
+            const Icon(Icons.south_rounded, color: muted, size: 15),
+            const SizedBox(width: 5),
+            const Text(
+              'По готовности',
+              style: TextStyle(color: muted, fontSize: 12),
+            ),
           ],
         ),
         const SizedBox(height: 16),
-        if (filtered.isEmpty)
-          surface(
-            const Center(
-              child: Padding(
-                padding: EdgeInsets.all(36),
-                child: Text('По этим фильтрам задач пока нет.'),
-              ),
+        if (catalog.isEmpty && businesses.isEmpty && banner == null)
+          const Padding(
+            padding: EdgeInsets.all(45),
+            child: Center(child: CircularProgressIndicator()),
+          )
+        else if (filtered.isEmpty)
+          _emptyState(
+            Icons.manage_search_rounded,
+            'Ничего не нашлось',
+            'Попробуйте другую тему или сбросьте фильтры.',
+            action: TextButton(
+              onPressed: _clearFilters,
+              child: const Text('Сбросить фильтры'),
             ),
           )
         else
           LayoutBuilder(
-            builder: (context, c) {
-              final columns = c.maxWidth > 860
+            builder: (context, box) {
+              final columns = box.maxWidth >= 1040
                   ? 3
-                  : c.maxWidth > 540
+                  : box.maxWidth >= 580
                   ? 2
                   : 1;
               return GridView.builder(
@@ -822,9 +1108,9 @@ class _HomeState extends State<Home> {
                 itemCount: filtered.length,
                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: columns,
-                  mainAxisSpacing: 16,
-                  crossAxisSpacing: 16,
-                  mainAxisExtent: 275,
+                  mainAxisSpacing: 20,
+                  crossAxisSpacing: 20,
+                  mainAxisExtent: 346,
                 ),
                 itemBuilder: (context, i) =>
                     _taskCard(Map<String, dynamic>.from(filtered[i])),
@@ -835,63 +1121,185 @@ class _HomeState extends State<Home> {
     );
   }
 
-  Widget _taskCard(Map<String, dynamic> task) {
-    final f = Map<String, dynamic>.from(task['fields']);
-    final rating = Map<String, dynamic>.from(task['rating']);
-    return InkWell(
-      onTap: () => openTask(task),
-      borderRadius: BorderRadius.circular(20),
-      child: surface(
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _inlineMetric(IconData icon, String text) => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Icon(icon, size: 15, color: muted),
+      const SizedBox(width: 7),
+      Text(text, style: const TextStyle(color: muted, fontSize: 12)),
+    ],
+  );
+
+  Widget _emptyState(
+    IconData icon,
+    String title,
+    String description, {
+    Widget? action,
+  }) => surface(
+    SizedBox(
+      width: double.infinity,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 30),
+        child: Column(
           children: [
-            Row(
-              children: [
-                _tag((f['topic'] as String).isEmpty ? 'Другое' : f['topic']),
-                const Spacer(),
-                levelPill(rating['level']),
-              ],
+            Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                color: const Color(0xFFEAF2FF),
+                borderRadius: BorderRadius.circular(22),
+              ),
+              child: Icon(icon, color: blue, size: 30),
             ),
             const SizedBox(height: 18),
             Text(
-              f['title'],
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
+              title,
               style: const TextStyle(
-                fontSize: 19,
-                fontWeight: FontWeight.w800,
-                color: ink,
-                height: 1.22,
+                fontSize: 21,
+                fontWeight: FontWeight.w600,
+                letterSpacing: -.5,
               ),
             ),
-            const SizedBox(height: 9),
-            Expanded(
-              child: Text(
-                (f['need'] as String).isEmpty ? f['context'] : f['need'],
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(color: muted, height: 1.45),
-              ),
+            const SizedBox(height: 8),
+            Text(
+              description,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: muted, fontSize: 14),
             ),
-            const Divider(color: line),
-            Row(
-              children: [
-                _scoreCircle(rating['score'] as int, small: true),
-                const SizedBox(width: 10),
-                const Text(
-                  'готовность',
-                  style: TextStyle(color: muted, fontSize: 13),
-                ),
-                const Spacer(),
-                Text(
-                  '${task['proposal_count']} откликов',
-                  style: const TextStyle(color: muted, fontSize: 12),
-                ),
-              ],
-            ),
+            if (action != null) ...[const SizedBox(height: 16), action],
           ],
         ),
-        padding: const EdgeInsets.all(20),
+      ),
+    ),
+  );
+
+  Widget _taskCard(Map<String, dynamic> task) {
+    final f = Map<String, dynamic>.from(task['fields']),
+        rating = Map<String, dynamic>.from(task['rating']);
+    final category = (f['topic'] as String).isEmpty
+        ? 'Другое'
+        : f['topic'] as String;
+    final score = rating['score'] as int;
+    return HoverCard(
+      onTap: () => openTask(task),
+      padding: const EdgeInsets.all(22),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              topicMark(category, size: 42),
+              const SizedBox(width: 11),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      category,
+                      style: TextStyle(
+                        color: topicColor(category),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      _companyName(task['owner']),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: muted, fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.north_east_rounded,
+                size: 18,
+                color: topicColor(category).withValues(alpha: .7),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Text(
+            f['title'],
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 21,
+              fontWeight: FontWeight.w600,
+              color: ink,
+              height: 1.24,
+              letterSpacing: -.5,
+            ),
+          ),
+          const SizedBox(height: 9),
+          Text(
+            (f['need'] as String).isEmpty ? f['context'] : f['need'],
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(color: muted, fontSize: 14, height: 1.5),
+          ),
+          const Spacer(),
+          Row(
+            children: [
+              Text(
+                rating['level'],
+                style: TextStyle(
+                  color: levelColor(rating['level']),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                '$score',
+                style: const TextStyle(
+                  color: ink,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const Text(
+                ' / 100',
+                style: TextStyle(color: muted, fontSize: 12),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(3),
+            child: ExcludeSemantics(
+              child: LinearProgressIndicator(
+                value: score / 100,
+                minHeight: 4,
+                color: levelColor(rating['level']),
+                backgroundColor: const Color(0xFFF0F2F5),
+              ),
+            ),
+          ),
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              const Icon(Icons.forum_outlined, size: 15, color: muted),
+              const SizedBox(width: 7),
+              Text(
+                _responseLabel(task['proposal_count'] as int),
+                style: const TextStyle(color: muted, fontSize: 12),
+              ),
+              const Spacer(),
+              const Text(
+                'Посмотреть',
+                style: TextStyle(
+                  color: blue,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(width: 5),
+              const Icon(Icons.arrow_forward_rounded, size: 14, color: blue),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -901,8 +1309,11 @@ class _HomeState extends State<Home> {
     List<String> options,
     ValueChanged<String> onChanged,
   ) => DropdownButtonFormField<String>(
+    key: ValueKey(value),
     initialValue: value,
     isExpanded: true,
+    borderRadius: BorderRadius.circular(18),
+    icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 19),
     decoration: const InputDecoration(
       contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
     ),
@@ -930,27 +1341,6 @@ class _HomeState extends State<Home> {
         color: ink,
         fontWeight: FontWeight.w700,
         fontSize: 12,
-      ),
-    ),
-  );
-  Widget _scoreCircle(int score, {bool small = false}) => Container(
-    width: small ? 39 : 92,
-    height: small ? 39 : 92,
-    alignment: Alignment.center,
-    decoration: BoxDecoration(
-      shape: BoxShape.circle,
-      color: score >= 70 ? mint : const Color(0xFFFFF1D9),
-      border: Border.all(
-        color: score >= 70 ? const Color(0xFFB4E8CE) : const Color(0xFFFFDB9D),
-        width: small ? 2 : 5,
-      ),
-    ),
-    child: Text(
-      '$score',
-      style: TextStyle(
-        fontSize: small ? 15 : 30,
-        fontWeight: FontWeight.w900,
-        color: score >= 70 ? const Color(0xFF148657) : const Color(0xFFA76A10),
       ),
     ),
   );
@@ -988,49 +1378,81 @@ class _HomeState extends State<Home> {
       );
 
   Widget _minePage() {
-    final drafts = mine.where((t) => t['status'] == 'draft').length;
+    final drafts = mine.where((task) => task['status'] == 'draft').length;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _pageTitle(
           'Мои задачи',
-          'Черновики и опубликованные карточки профиля $profileName.',
+          'Ваши идеи и работа с командами — в одном месте.',
           action: FilledButton.icon(
             onPressed: resetCreate,
-            icon: const Icon(Icons.add),
+            icon: const Icon(Icons.add_rounded, size: 19),
             label: const Text('Новая задача'),
           ),
         ),
-        const SizedBox(height: 25),
-        Row(
-          children: [
-            Expanded(
-              child: _stat('Всего задач', '${mine.length}', Icons.folder_open),
-            ),
-            const SizedBox(width: 14),
-            Expanded(child: _stat('Черновики', '$drafts', Icons.edit_note)),
-            const SizedBox(width: 14),
-            Expanded(
-              child: _stat(
-                'Опубликовано',
-                '${mine.length - drafts}',
-                Icons.public,
-              ),
-            ),
-          ],
+        const SizedBox(height: 26),
+        LayoutBuilder(
+          builder: (context, box) {
+            final width = box.maxWidth > 650
+                ? (box.maxWidth - 32) / 3
+                : box.maxWidth;
+            return Wrap(
+              spacing: 16,
+              runSpacing: 12,
+              children: [
+                SizedBox(
+                  width: width,
+                  child: _stat(
+                    'Всего задач',
+                    '${mine.length}',
+                    Icons.folder_outlined,
+                  ),
+                ),
+                SizedBox(
+                  width: width,
+                  child: _stat(
+                    'В работе над брифом',
+                    '$drafts',
+                    Icons.edit_note_rounded,
+                  ),
+                ),
+                SizedBox(
+                  width: width,
+                  child: _stat(
+                    'Опубликовано',
+                    '${mine.length - drafts}',
+                    Icons.public_rounded,
+                  ),
+                ),
+              ],
+            );
+          },
         ),
-        const SizedBox(height: 22),
+        const SizedBox(height: 30),
+        const Text(
+          'Ваши карточки',
+          style: TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.w600,
+            letterSpacing: -.3,
+          ),
+        ),
+        const SizedBox(height: 16),
         if (mine.isEmpty)
-          surface(
-            const Padding(
-              padding: EdgeInsets.all(32),
-              child: Text('Задач пока нет. Создайте первую карточку.'),
+          _emptyState(
+            Icons.note_add_outlined,
+            'Начните с первой идеи',
+            'Помощник поможет превратить её в задачу.',
+            action: FilledButton(
+              onPressed: resetCreate,
+              child: const Text('Создать задачу'),
             ),
           )
         else
           for (final raw in mine) ...[
             _mineRow(Map<String, dynamic>.from(raw)),
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
           ],
       ],
     );
@@ -1040,79 +1462,111 @@ class _HomeState extends State<Home> {
     Row(
       children: [
         Container(
-          padding: const EdgeInsets.all(10),
+          width: 44,
+          height: 44,
           decoration: BoxDecoration(
-            color: const Color(0xFFEAF0FF),
-            borderRadius: BorderRadius.circular(10),
+            color: const Color(0xFFEAF2FF),
+            borderRadius: BorderRadius.circular(15),
           ),
-          child: Icon(icon, color: blue),
+          child: Icon(icon, color: blue, size: 22),
         ),
-        const SizedBox(width: 14),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              value,
-              style: const TextStyle(
-                fontSize: 25,
-                fontWeight: FontWeight.w900,
-                color: ink,
+        const SizedBox(width: 16),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 29,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: -1,
+                ),
               ),
-            ),
-            Text(label, style: const TextStyle(color: muted, fontSize: 13)),
-          ],
+              const SizedBox(height: 3),
+              Text(label, style: const TextStyle(color: muted, fontSize: 12)),
+            ],
+          ),
         ),
       ],
     ),
+    padding: const EdgeInsets.all(22),
   );
   Widget _mineRow(Map<String, dynamic> task) {
-    final f = Map<String, dynamic>.from(task['fields']);
-    final rating = Map<String, dynamic>.from(task['rating']);
-    return surface(
-      Row(
-        children: [
-          _scoreCircle(rating['score'] as int, small: true),
-          const SizedBox(width: 17),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  (f['title'] as String).isEmpty ? task['idea'] : f['title'],
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w700,
-                    color: ink,
-                  ),
+    final f = Map<String, dynamic>.from(task['fields']),
+        rating = Map<String, dynamic>.from(task['rating']);
+    final draft = task['status'] == 'draft';
+    final category = (f['topic'] as String).isEmpty
+        ? 'Другое'
+        : f['topic'] as String;
+    final title = (f['title'] as String).isEmpty ? task['idea'] : f['title'];
+    final content = Row(
+      children: [
+        topicMark(category, size: 42),
+        const SizedBox(width: 15),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: -.3,
                 ),
-                const SizedBox(height: 5),
-                Text(
-                  task['status'] == 'draft'
-                      ? 'Черновик · ${rating['level']}'
-                      : 'Опубликована · ${task['proposal_count']} откликов',
-                  style: const TextStyle(color: muted, fontSize: 13),
-                ),
-              ],
-            ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                draft
+                    ? 'Не опубликована · ${rating['score']}/100'
+                    : '${rating['level']} · ${_responseLabel(task['proposal_count'] as int)}',
+                style: const TextStyle(color: muted, fontSize: 12),
+              ),
+            ],
           ),
-          const SizedBox(width: 10),
-          OutlinedButton(
-            onPressed: () => editTask(task),
-            child: const Text('Редактировать'),
-          ),
-          if (task['status'] == 'published') ...[
-            const SizedBox(width: 8),
-            IconButton(
-              onPressed: () => openTask(task),
-              icon: const Icon(Icons.arrow_forward),
-              tooltip: 'Открыть задачу',
+        ),
+      ],
+    );
+    final actions = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        OutlinedButton(
+          onPressed: () => editTask(task),
+          child: Text(draft ? 'Продолжить' : 'Редактировать'),
+        ),
+        if (!draft) ...[
+          const SizedBox(width: 8),
+          IconButton.filledTonal(
+            onPressed: () => openTask(task),
+            style: IconButton.styleFrom(
+              backgroundColor: const Color(0xFFEAF2FF),
+              foregroundColor: blue,
             ),
-          ],
+            icon: const Icon(Icons.arrow_forward_rounded, size: 19),
+            tooltip: 'Открыть задачу',
+          ),
         ],
+      ],
+    );
+    return surface(
+      LayoutBuilder(
+        builder: (context, box) => box.maxWidth < 590
+            ? Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [content, const SizedBox(height: 18), actions],
+              )
+            : Row(
+                children: [
+                  Expanded(child: content),
+                  const SizedBox(width: 20),
+                  actions,
+                ],
+              ),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      padding: const EdgeInsets.all(22),
     );
   }
 
@@ -1122,7 +1576,11 @@ class _HomeState extends State<Home> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _pageTitle(
-          isPublished ? 'Редактировать задачу' : 'Новая задача',
+          isPublished
+              ? 'Редактировать задачу'
+              : createStep == 2
+              ? 'Карточка задачи'
+              : 'Новая задача',
           isPublished
               ? 'Изменения рейтинга вступят в силу после подтверждения.'
               : 'От идеи до понятной карточки для команды.',
@@ -1140,83 +1598,235 @@ class _HomeState extends State<Home> {
 
   Widget _steps() {
     final names = ['Идея', 'Уточнения', 'Карточка', 'Публикация'];
-    return surface(
-      Row(
+    return LayoutBuilder(
+      builder: (context, box) => Row(
         children: [
           for (var i = 0; i < names.length; i++) ...[
             Expanded(
-              child: Row(
-                children: [
-                  Container(
-                    width: 30,
-                    height: 30,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: i <= createStep ? blue : const Color(0xFFE9EDF5),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Text(
-                      '${i + 1}',
-                      style: TextStyle(
-                        color: i <= createStep ? Colors.white : muted,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 13,
+                  horizontal: 10,
+                ),
+                decoration: BoxDecoration(
+                  color: i == createStep ? Colors.white : Colors.transparent,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: i == createStep ? line : Colors.transparent,
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      names[i],
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: i <= createStep ? ink : muted,
-                        fontWeight: i == createStep
-                            ? FontWeight.w800
-                            : FontWeight.w500,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      width: 26,
+                      height: 26,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: i < createStep
+                            ? mint
+                            : i == createStep
+                            ? blue
+                            : const Color(0xFFE8ECF2),
+                        shape: BoxShape.circle,
                       ),
+                      child: i < createStep
+                          ? const Icon(
+                              Icons.check_rounded,
+                              size: 16,
+                              color: Color(0xFF188038),
+                            )
+                          : Text(
+                              '${i + 1}',
+                              style: TextStyle(
+                                color: i == createStep ? Colors.white : muted,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                     ),
-                  ),
-                ],
+                    if (box.maxWidth > 450) ...[
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          names[i],
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: i == createStep ? ink : muted,
+                            fontSize: 13,
+                            fontWeight: i == createStep
+                                ? FontWeight.w600
+                                : FontWeight.w400,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
               ),
             ),
-            if (i < names.length - 1) const SizedBox(width: 12),
+            if (i < names.length - 1) const SizedBox(width: 6),
           ],
         ],
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
     );
   }
 
-  Widget _ideaStep() => surface(
-    Column(
+  Widget _ideaStep() => LayoutBuilder(
+    builder: (context, box) {
+      final form = surface(
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                topicMark('AI', size: 46),
+                const SizedBox(width: 14),
+                const Expanded(
+                  child: Text(
+                    'Всё начинается с идеи',
+                    style: TextStyle(
+                      fontSize: 23,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: -.7,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Расскажите, что вы хотите улучшить. Помощник уточнит детали и подготовит основу карточки.',
+              style: TextStyle(color: muted, fontSize: 15, height: 1.55),
+            ),
+            const SizedBox(height: 25),
+            TextField(
+              controller: idea,
+              maxLines: 6,
+              decoration: const InputDecoration(
+                hintText: 'Например: менеджеры тратят много времени на одинаковые вопросы покупателей. Хотим бота для поддержки.',
+                contentPadding: EdgeInsets.all(20),
+              ),
+            ),
+            const SizedBox(height: 14),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _exampleChip(
+                  'Бот поддержки',
+                  'Менеджеры тратят много времени на одинаковые вопросы покупателей. Хотим бота для поддержки.',
+                ),
+                _exampleChip(
+                  'Аналитика отзывов',
+                  'Получаем отзывы из разных каналов. Нужно понять, какие проблемы упоминают чаще всего.',
+                ),
+              ],
+            ),
+            const SizedBox(height: 27),
+            FilledButton.icon(
+              onPressed: busy ? null : startQuestions,
+              icon: const Icon(Icons.auto_awesome_rounded, size: 18),
+              label: Text(busy ? 'Готовим вопросы…' : 'Получить вопросы'),
+            ),
+          ],
+        ),
+        padding: const EdgeInsets.all(30),
+      );
+      final guide = Container(
+        padding: const EdgeInsets.all(26),
+        decoration: BoxDecoration(
+          color: const Color(0xFFEDF3FD),
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Что получится',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                letterSpacing: -.4,
+              ),
+            ),
+            const SizedBox(height: 22),
+            _guideItem(
+              Icons.assignment_outlined,
+              'Понятная карточка',
+              'Контекст, результат и условия работы.',
+            ),
+            _guideItem(
+              Icons.donut_large_rounded,
+              'Рейтинг готовности',
+              'Подсказки, что стоит уточнить.',
+            ),
+            _guideItem(
+              Icons.people_outline_rounded,
+              'Предложения команд',
+              'Вы сами выбираете, с кем работать.',
+            ),
+            const Divider(height: 26, color: Color(0xFFD9E3F3)),
+            const Text(
+              'Публикация — только после вашего подтверждения.',
+              style: TextStyle(color: muted, fontSize: 13, height: 1.5),
+            ),
+          ],
+        ),
+      );
+      if (box.maxWidth < 880) {
+        return Column(children: [form, const SizedBox(height: 18), guide]);
+      }
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(flex: 7, child: form),
+          const SizedBox(width: 22),
+          Expanded(flex: 3, child: guide),
+        ],
+      );
+    },
+  );
+  Widget _exampleChip(String label, String value) => ActionChip(
+    onPressed: () {
+      idea.text = value;
+    },
+    avatar: const Icon(Icons.add_rounded, size: 15, color: muted),
+    label: Text(label, style: const TextStyle(color: muted, fontSize: 12)),
+    backgroundColor: Colors.white,
+    side: const BorderSide(color: line),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(99)),
+  );
+  Widget _guideItem(IconData icon, String title, String description) => Padding(
+    padding: const EdgeInsets.only(bottom: 18),
+    child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Опишите задачу своими словами',
-          style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.w800,
-            color: ink,
+        Icon(icon, color: blue, size: 21),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                description,
+                style: const TextStyle(
+                  color: muted,
+                  fontSize: 13,
+                  height: 1.45,
+                ),
+              ),
+            ],
           ),
-        ),
-        const SizedBox(height: 8),
-        const Text(
-          'Можно начать с пары предложений. Помощник задаст вопросы о недостающих деталях.',
-          style: TextStyle(color: muted),
-        ),
-        const SizedBox(height: 24),
-        TextField(
-          controller: idea,
-          maxLines: 6,
-          decoration: const InputDecoration(
-            hintText: 'Например: хотим бота, который отвечает на частые вопросы покупателей...',
-          ),
-        ),
-        const SizedBox(height: 22),
-        FilledButton.icon(
-          onPressed: busy ? null : startQuestions,
-          icon: const Icon(Icons.auto_awesome),
-          label: Text(busy ? 'Подождите…' : 'Получить вопросы'),
         ),
       ],
     ),
@@ -1285,7 +1895,7 @@ class _HomeState extends State<Home> {
           };
     return LayoutBuilder(
       builder: (context, c) {
-        final wide = c.maxWidth > 830;
+        final wide = c.maxWidth > 920;
         final form = _cardForm();
         final sidebar = _ratingPanel(rating);
         return wide
@@ -1297,7 +1907,7 @@ class _HomeState extends State<Home> {
                   Expanded(flex: 3, child: sidebar),
                 ],
               )
-            : Column(children: [sidebar, const SizedBox(height: 18), form]);
+            : Column(children: [form, const SizedBox(height: 20), sidebar]);
       },
     );
   }
@@ -1306,45 +1916,50 @@ class _HomeState extends State<Home> {
     Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Паспорт задачи',
-          style: TextStyle(
-            fontSize: 23,
-            fontWeight: FontWeight.w800,
-            color: ink,
-          ),
-        ),
-        const SizedBox(height: 7),
-        const Text(
-          'Заполняйте конкретными фактами. Длинный текст сам по себе не повышает рейтинг.',
-          style: TextStyle(color: muted),
-        ),
-        const SizedBox(height: 22),
-        for (final entry in fieldLabels.entries) ...[
-          Text(
-            entry.value,
-            style: const TextStyle(fontWeight: FontWeight.w700, color: ink),
-          ),
-          const SizedBox(height: 8),
-          entry.key == 'topic'
-              ? _dropdown(
-                  fields['topic']!.text.isEmpty
-                      ? 'Другое'
-                      : fields['topic']!.text,
-                  topics.skip(1).toList(),
-                  (v) => setState(() => fields['topic']!.text = v),
-                )
-              : TextField(
-                  controller: fields[entry.key],
-                  minLines: entry.key == 'title' ? 1 : 2,
-                  maxLines: entry.key == 'title' ? 1 : 3,
-                  decoration: InputDecoration(hintText: _hint(entry.key)),
+        Row(
+          children: [
+            const Expanded(
+              child: Text(
+                'Паспорт задачи',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: -.7,
                 ),
-          const SizedBox(height: 17),
-        ],
+              ),
+            ),
+            if (editing?['rating'] != null)
+              levelPill(editing!['rating']['level']),
+          ],
+        ),
+        const SizedBox(height: 8),
+        const Text(
+          'Проверьте факты и добавьте детали. Оценка обновится после сохранения.',
+          style: TextStyle(color: muted, fontSize: 14),
+        ),
+        const SizedBox(height: 28),
+        _formSection('01', 'Суть задачи', [
+          'title',
+          'topic',
+          'context',
+          'need',
+        ]),
+        const Divider(height: 40),
+        _formSection('02', 'Результат и условия', [
+          'users',
+          'data',
+          'outcome',
+          'success',
+          'constraints',
+        ]),
+        const Divider(height: 40),
+        _formSection('03', 'Связь с командой', ['contact', 'format']),
+        const SizedBox(height: 28),
+        const Divider(height: 1),
+        const SizedBox(height: 22),
         Wrap(
           spacing: 10,
-          runSpacing: 10,
+          runSpacing: 12,
           children: [
             OutlinedButton(
               onPressed: busy
@@ -1361,18 +1976,99 @@ class _HomeState extends State<Home> {
                         ? updatePublished
                         : publish),
               icon: Icon(
-                editing?['status'] == 'published' ? Icons.check : Icons.publish,
+                editing?['status'] == 'published'
+                    ? Icons.check_rounded
+                    : Icons.arrow_upward_rounded,
+                size: 18,
               ),
               label: Text(
                 editing?['status'] == 'published'
                     ? 'Подтвердить изменения'
-                    : 'Опубликовать задачу',
+                    : 'Опубликовать',
               ),
             ),
           ],
         ),
       ],
     ),
+    padding: const EdgeInsets.all(28),
+  );
+
+  Widget _formSection(String number, String title, List<String> keys) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Row(
+        children: [
+          Text(
+            number,
+            style: const TextStyle(
+              color: blue,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Text(
+            title,
+            style: const TextStyle(
+              fontWeight: FontWeight.w600,
+              fontSize: 17,
+              letterSpacing: -.3,
+            ),
+          ),
+        ],
+      ),
+      const SizedBox(height: 18),
+      LayoutBuilder(
+        builder: (context, box) {
+          final width = box.maxWidth > 590
+              ? (box.maxWidth - 18) / 2
+              : box.maxWidth;
+          return Wrap(
+            spacing: 18,
+            runSpacing: 20,
+            children: keys
+                .map(
+                  (key) => SizedBox(
+                    width: key == 'constraints' ? box.maxWidth : width,
+                    child: _editorField(key),
+                  ),
+                )
+                .toList(),
+          );
+        },
+      ),
+    ],
+  );
+  Widget _editorField(String key) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        fieldLabels[key]!,
+        style: const TextStyle(
+          fontWeight: FontWeight.w500,
+          color: ink,
+          fontSize: 13,
+        ),
+      ),
+      const SizedBox(height: 8),
+      if (key == 'topic')
+        _dropdown(
+          topics.skip(1).contains(fields['topic']!.text)
+              ? fields['topic']!.text
+              : 'Другое',
+          topics.skip(1).toList(),
+          (v) => setState(() => fields['topic']!.text = v),
+        )
+      else
+        TextField(
+          controller: fields[key],
+          minLines: key == 'title' ? 1 : 3,
+          maxLines: key == 'title' ? 1 : 5,
+          style: const TextStyle(fontSize: 15, height: 1.5),
+          decoration: InputDecoration(hintText: _hint(key)),
+        ),
+    ],
   );
   String _hint(String key) => switch (key) {
     'title' => 'Например: бот поддержки клиентов',
@@ -1391,59 +2087,85 @@ class _HomeState extends State<Home> {
     Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Готовность задачи',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w800,
-            color: ink,
-          ),
-        ),
-        const SizedBox(height: 18),
-        Row(
+        const Row(
           children: [
-            _scoreCircle(rating['score'] as int),
-            const SizedBox(width: 15),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  levelPill(rating['level']),
-                  const SizedBox(height: 9),
-                  const Text('из 100 баллов', style: TextStyle(color: muted)),
-                ],
-              ),
+            Icon(Icons.donut_large_rounded, color: blue, size: 19),
+            SizedBox(width: 9),
+            Text(
+              'Готовность задачи',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
             ),
           ],
         ),
-        const SizedBox(height: 21),
+        const SizedBox(height: 26),
+        Center(child: ScoreRing(rating['score'] as int)),
+        const SizedBox(height: 17),
+        Center(child: levelPill(rating['level'])),
+        const SizedBox(height: 9),
+        const Center(
+          child: Text(
+            'По сохранённым данным',
+            style: TextStyle(color: muted, fontSize: 12),
+          ),
+        ),
+        const SizedBox(height: 26),
         for (final raw in rating['breakdown'] as List) ...[
           _ratingLine(Map<String, dynamic>.from(raw)),
-          const SizedBox(height: 12),
+          const SizedBox(height: 15),
         ],
-        const Divider(color: line, height: 30),
-        const Text(
-          'Что улучшить',
-          style: TextStyle(fontWeight: FontWeight.w800, color: ink),
+        const Divider(height: 27),
+        Row(
+          children: [
+            Icon(
+              (rating['advice'] as List).isEmpty
+                  ? Icons.check_circle_outline
+                  : Icons.lightbulb_outline,
+              size: 18,
+              color: blue,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              (rating['advice'] as List).isEmpty
+                  ? 'Всё готово'
+                  : 'Следующий шаг',
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+            ),
+          ],
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 12),
         if ((rating['advice'] as List).isEmpty)
-          const Text('Все критерии заполнены.', style: TextStyle(color: muted))
+          const Text(
+            'Все критерии заполнены. Карточка готова к работе с командой.',
+            style: TextStyle(color: muted, fontSize: 13, height: 1.5),
+          )
         else
           for (final advice in rating['advice'] as List)
             Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Text(
-                '• $advice',
-                style: const TextStyle(
-                  color: muted,
-                  fontSize: 13,
-                  height: 1.35,
-                ),
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.only(top: 3),
+                    child: Icon(Icons.add_rounded, size: 14, color: muted),
+                  ),
+                  const SizedBox(width: 7),
+                  Expanded(
+                    child: Text(
+                      advice,
+                      style: const TextStyle(
+                        color: muted,
+                        fontSize: 13,
+                        height: 1.5,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
       ],
     ),
+    padding: const EdgeInsets.all(24),
   );
   Widget _ratingLine(Map<String, dynamic> item) => Column(
     children: [
@@ -1452,28 +2174,31 @@ class _HomeState extends State<Home> {
           Expanded(
             child: Text(
               item['label'],
-              style: const TextStyle(color: ink, fontSize: 12),
+              style: const TextStyle(color: ink, fontSize: 12, height: 1.35),
             ),
           ),
+          const SizedBox(width: 8),
           Text(
             '${item['earned']}/${item['points']}',
             style: TextStyle(
               color: (item['earned'] as int) > 0
-                  ? const Color(0xFF15875C)
+                  ? const Color(0xFF188038)
                   : muted,
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w600,
               fontSize: 12,
             ),
           ),
         ],
       ),
-      const SizedBox(height: 5),
-      LinearProgressIndicator(
-        value: (item['earned'] as num) / (item['points'] as num),
-        backgroundColor: const Color(0xFFECF0F6),
-        color: const Color(0xFF36B889),
-        borderRadius: BorderRadius.circular(8),
-        minHeight: 5,
+      const SizedBox(height: 7),
+      ClipRRect(
+        borderRadius: BorderRadius.circular(5),
+        child: LinearProgressIndicator(
+          value: (item['earned'] as num) / (item['points'] as num),
+          backgroundColor: const Color(0xFFEDF0F4),
+          color: const Color(0xFF6BBF8C),
+          minHeight: 4,
+        ),
       ),
     ],
   );
@@ -1511,97 +2236,145 @@ class _HomeState extends State<Home> {
         f = Map<String, dynamic>.from(task['fields']),
         rating = Map<String, dynamic>.from(task['rating']);
     final isOwner = role == 'business' && task['owner'] == profile;
+    final category = (f['topic'] as String).isEmpty
+        ? 'Другое'
+        : f['topic'] as String;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         TextButton.icon(
           onPressed: () => navigate('catalog'),
-          icon: const Icon(Icons.arrow_back),
-          label: const Text('Назад в каталог'),
+          icon: const Icon(Icons.arrow_back_rounded, size: 17),
+          label: const Text('Все задачи'),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 18),
         surface(
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
-                  _tag((f['topic'] as String).isEmpty ? 'Другое' : f['topic']),
-                  const SizedBox(width: 10),
-                  levelPill(rating['level']),
-                  const Spacer(),
-                  const Icon(Icons.visibility_outlined, color: muted, size: 18),
-                  const SizedBox(width: 5),
-                  const Text(
-                    'Доступна всем командам',
-                    style: TextStyle(color: muted, fontSize: 12),
+                  topicMark(category, size: 52),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _companyName(task['owner']),
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          category,
+                          style: TextStyle(
+                            color: topicColor(category),
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
+                  levelPill(rating['level']),
                 ],
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 23),
               Text(
                 f['title'],
                 style: Theme.of(context).textTheme.headlineLarge,
               ),
-              const SizedBox(height: 9),
+              const SizedBox(height: 11),
               Text(
                 f['need'],
-                style: const TextStyle(color: muted, fontSize: 16),
+                style: const TextStyle(color: muted, fontSize: 16, height: 1.6),
               ),
-              const SizedBox(height: 22),
-              Row(
+              const SizedBox(height: 24),
+              Wrap(
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 22,
+                runSpacing: 16,
                 children: [
-                  _scoreCircle(rating['score'] as int, small: true),
-                  const SizedBox(width: 10),
-                  Text(
-                    'Готовность ${rating['score']}/100',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w700,
-                      color: ink,
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      ScoreRing(rating['score'] as int, small: true),
+                      const SizedBox(width: 10),
+                      const Text(
+                        'Готовность задачи',
+                        style: TextStyle(color: muted, fontSize: 13),
+                      ),
+                    ],
+                  ),
+                  _inlineMetric(
+                    Icons.forum_outlined,
+                    _responseLabel(task['proposal_count'] as int),
+                  ),
+                  if (role == 'team' || isOwner)
+                    FilledButton.icon(
+                      onPressed: () {
+                        final target = _responseKey.currentContext;
+                        if (target != null) {
+                          Scrollable.ensureVisible(
+                            target,
+                            duration: const Duration(milliseconds: 350),
+                            curve: Curves.easeOut,
+                            alignment: .03,
+                          );
+                        }
+                      },
+                      icon: Icon(
+                        role == 'team'
+                            ? Icons.near_me_outlined
+                            : Icons.people_outline_rounded,
+                        size: 18,
+                      ),
+                      label: Text(
+                        role == 'team'
+                            ? 'Предложить решение'
+                            : 'Предложения команд',
+                      ),
                     ),
-                  ),
-                  const Spacer(),
-                  Text(
-                    '${task['proposal_count']} откликов',
-                    style: const TextStyle(color: muted),
-                  ),
                 ],
               ),
             ],
           ),
-          padding: const EdgeInsets.all(27),
+          padding: const EdgeInsets.all(30),
         ),
-        const SizedBox(height: 18),
+        const SizedBox(height: 22),
         LayoutBuilder(
-          builder: (context, c) {
-            final wide = c.maxWidth > 820;
+          builder: (context, box) {
             final body = _detailsFields(f);
+            final response = KeyedSubtree(
+              key: _responseKey,
+              child: role == 'team'
+                  ? _proposalForm()
+                  : isOwner
+                  ? _proposalsPanel()
+                  : const SizedBox.shrink(),
+            );
             final aside = Column(
               children: [
+                response,
+                if (role == 'team' || isOwner) const SizedBox(height: 20),
                 _ratingPanel(rating),
-                const SizedBox(height: 17),
-                if (role == 'team')
-                  _proposalForm()
-                else if (isOwner)
-                  _proposalsPanel()
-                else
-                  surface(
-                    const Text(
-                      'Переключитесь на профиль владельца, чтобы увидеть отклики.',
-                    ),
-                  ),
               ],
             );
-            return wide
-                ? Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(flex: 6, child: body),
-                      const SizedBox(width: 18),
-                      Expanded(flex: 4, child: aside),
-                    ],
-                  )
-                : Column(children: [body, const SizedBox(height: 18), aside]);
+            if (box.maxWidth < 960) {
+              return Column(
+                children: [body, const SizedBox(height: 20), aside],
+              );
+            }
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(flex: 6, child: body),
+                const SizedBox(width: 22),
+                Expanded(flex: 4, child: aside),
+              ],
+            );
           },
         ),
       ],
@@ -1613,91 +2386,170 @@ class _HomeState extends State<Home> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'О задаче',
+          'Бриф задачи',
           style: TextStyle(
-            fontSize: 21,
-            fontWeight: FontWeight.w800,
-            color: ink,
+            fontSize: 22,
+            fontWeight: FontWeight.w600,
+            letterSpacing: -.5,
           ),
         ),
-        const SizedBox(height: 17),
+        const SizedBox(height: 25),
         for (final key in [
           'context',
           'need',
+          'outcome',
+          'success',
           'users',
           'data',
           'constraints',
-          'outcome',
-          'success',
           'contact',
           'format',
         ]) ...[
-          Text(
-            fieldLabels[key]!,
-            style: const TextStyle(fontWeight: FontWeight.w800, color: ink),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF3F6FA),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  switch (key) {
+                    'context' => Icons.subject_rounded,
+                    'need' => Icons.flag_outlined,
+                    'outcome' => Icons.inventory_2_outlined,
+                    'success' => Icons.check_circle_outline,
+                    'users' => Icons.people_outline_rounded,
+                    'data' => Icons.storage_rounded,
+                    'constraints' => Icons.tune_rounded,
+                    'contact' => Icons.alternate_email_rounded,
+                    _ => Icons.chat_bubble_outline_rounded,
+                  },
+                  size: 17,
+                  color: muted,
+                ),
+              ),
+              const SizedBox(width: 13),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      fieldLabels[key]!,
+                      style: const TextStyle(
+                        color: muted,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 7),
+                    SelectableText(
+                      (f[key] as String).isEmpty ? 'Пока не указано' : f[key],
+                      style: TextStyle(
+                        color: (f[key] as String).isEmpty
+                            ? const Color(0xFF9AA0AA)
+                            : ink,
+                        fontSize: 15,
+                        height: 1.65,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 6),
-          Text(
-            (f[key] as String).isEmpty ? 'Не указано' : f[key],
-            style: TextStyle(
-              color: (f[key] as String).isEmpty ? muted : ink,
-              height: 1.45,
-            ),
-          ),
-          const Divider(color: line, height: 28),
+          if (key != 'format') const Divider(height: 32),
         ],
       ],
     ),
+    padding: const EdgeInsets.all(28),
   );
   Widget _proposalForm() => surface(
     Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        Container(
+          width: 42,
+          height: 42,
+          decoration: BoxDecoration(
+            color: const Color(0xFFEAF2FF),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: const Icon(Icons.near_me_outlined, color: blue, size: 21),
+        ),
+        const SizedBox(height: 16),
         const Text(
-          'Откликнуться на задачу',
+          'Предложите решение',
           style: TextStyle(
-            fontSize: 19,
-            fontWeight: FontWeight.w800,
-            color: ink,
+            fontSize: 21,
+            fontWeight: FontWeight.w600,
+            letterSpacing: -.5,
           ),
         ),
-        const SizedBox(height: 7),
-        const Text(
-          'Опишите предложение. Команду выбирает только представитель бизнеса.',
-          style: TextStyle(color: muted, fontSize: 13),
+        const SizedBox(height: 8),
+        Text(
+          'От команды $profileName. Расскажите о подходе и первых шагах.',
+          style: const TextStyle(color: muted, fontSize: 13, height: 1.5),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 24),
         _formField('Идея решения', proposalIdea, maxLines: 3),
         _formField('План работы', proposalPlan, maxLines: 3),
         _formField('Срок', proposalTimeline),
-        _formField('Ссылка на прототип (необязательно)', proposalLink),
-        const SizedBox(height: 4),
-        FilledButton.icon(
-          onPressed: busy ? null : sendProposal,
-          icon: const Icon(Icons.send_outlined),
-          label: const Text('Отправить отклик'),
+        _formField('Ссылка на прототип · необязательно', proposalLink),
+        const SizedBox(height: 6),
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            onPressed: busy ? null : sendProposal,
+            icon: const Icon(Icons.arrow_outward_rounded, size: 18),
+            label: Text(busy ? 'Отправляем…' : 'Отправить отклик'),
+          ),
+        ),
+        const SizedBox(height: 13),
+        const Center(
+          child: Text(
+            'Выбор команды остаётся за бизнесом',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: muted, fontSize: 11),
+          ),
         ),
       ],
     ),
+    padding: const EdgeInsets.all(26),
   );
   Widget _formField(
     String label,
     TextEditingController controller, {
     int maxLines = 1,
   }) => Padding(
-    padding: const EdgeInsets.only(bottom: 15),
+    padding: const EdgeInsets.only(bottom: 18),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
-          style: const TextStyle(fontWeight: FontWeight.w700, color: ink),
+          style: const TextStyle(
+            fontWeight: FontWeight.w500,
+            color: ink,
+            fontSize: 13,
+          ),
         ),
-        const SizedBox(height: 7),
+        const SizedBox(height: 8),
         TextField(
           controller: controller,
           maxLines: maxLines,
-          decoration: InputDecoration(hintText: label),
+          style: const TextStyle(fontSize: 14, height: 1.5),
+          decoration: InputDecoration(
+            hintText: controller == proposalIdea
+                ? 'Как вы решите задачу?'
+                : controller == proposalPlan
+                ? 'Этапы и результат каждого этапа'
+                : controller == proposalTimeline
+                ? 'Например, 3 недели'
+                : 'https://…',
+          ),
         ),
       ],
     ),
@@ -1712,89 +2564,190 @@ class _HomeState extends State<Home> {
               child: Text(
                 'Предложения команд',
                 style: TextStyle(
-                  fontSize: 19,
-                  fontWeight: FontWeight.w800,
-                  color: ink,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: -.5,
                 ),
               ),
             ),
-            Text('${inbox.length}', style: const TextStyle(color: muted)),
+            _tag('${inbox.length}'),
           ],
         ),
         const SizedBox(height: 8),
         const Text(
-          'Можно выбрать несколько команд или никого.',
-          style: TextStyle(color: muted, fontSize: 13),
+          'Сравните подходы. Можно выбрать несколько команд.',
+          style: TextStyle(color: muted, fontSize: 13, height: 1.5),
         ),
-        const SizedBox(height: 16),
-        if (inbox.isEmpty)
-          const Text('Откликов пока нет.', style: TextStyle(color: muted)),
+        const SizedBox(height: 22),
+        if (inboxLoading)
+          const Padding(
+            padding: EdgeInsets.all(26),
+            child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+          )
+        else if (inbox.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(22),
+            decoration: BoxDecoration(
+              color: canvas,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: const Column(
+              children: [
+                Icon(Icons.forum_outlined, color: muted, size: 26),
+                SizedBox(height: 10),
+                Text(
+                  'Первые отклики ещё впереди',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: muted, fontSize: 13),
+                ),
+              ],
+            ),
+          ),
         for (final raw in inbox) ...[
           _proposalTile(Map<String, dynamic>.from(raw)),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
         ],
       ],
     ),
+    padding: const EdgeInsets.all(24),
   );
-  Widget _proposalTile(Map<String, dynamic> p) => Container(
-    padding: const EdgeInsets.all(15),
-    decoration: BoxDecoration(
-      border: Border.all(color: line),
-      borderRadius: BorderRadius.circular(13),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                p['team_name'],
-                style: const TextStyle(color: ink, fontWeight: FontWeight.w800),
+  Widget _proposalTile(Map<String, dynamic> proposal) {
+    final selectedTeam = proposal['decision'] == 'selected';
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: selectedTeam ? const Color(0xFFF4FBF6) : Colors.white,
+        border: Border.all(
+          color: selectedTeam ? const Color(0xFFBFDFCA) : line,
+        ),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 18,
+                backgroundColor: const Color(0xFFEAF2FF),
+                child: Text(
+                  proposal['team_name'].toString()[0],
+                  style: const TextStyle(
+                    color: blue,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                ),
               ),
-            ),
-            _decisionPill(p['decision']),
-          ],
-        ),
-        const SizedBox(height: 3),
-        Text(
-          '${p['team_focus']} · ${p['university']}',
-          style: const TextStyle(color: muted, fontSize: 12),
-        ),
-        const SizedBox(height: 12),
-        Text(p['idea'], style: const TextStyle(color: ink)),
-        const SizedBox(height: 8),
-        Text(
-          'План: ${p['plan']}',
-          style: const TextStyle(color: muted, fontSize: 13),
-        ),
-        const SizedBox(height: 5),
-        Text(
-          'Срок: ${p['timeline']}',
-          style: const TextStyle(color: muted, fontSize: 13),
-        ),
-        if ((p['prototype'] as String).isNotEmpty)
-          Text(
-            'Прототип: ${p['prototype']}',
-            style: const TextStyle(color: blue, fontSize: 13),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  proposal['team_name'],
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: -.2,
+                  ),
+                ),
+              ),
+            ],
           ),
-        const SizedBox(height: 12),
-        Wrap(
-          spacing: 8,
-          children: [
-            OutlinedButton(
-              onPressed: () => decide(p, 'rejected'),
-              child: const Text('Отклонить'),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              _decisionPill(proposal['decision']),
+              _tag(proposal['timeline']),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '${proposal['team_focus']} · ${proposal['university']}',
+            style: const TextStyle(color: muted, fontSize: 11, height: 1.45),
+          ),
+          const Divider(height: 25),
+          Text(
+            proposal['idea'],
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              height: 1.5,
             ),
-            FilledButton(
-              onPressed: () => decide(p, 'selected'),
-              child: const Text('Выбрать'),
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'ПЛАН РАБОТЫ',
+            style: TextStyle(
+              color: muted,
+              fontSize: 9,
+              fontWeight: FontWeight.w600,
+              letterSpacing: .9,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            proposal['plan'],
+            style: const TextStyle(color: muted, fontSize: 13, height: 1.55),
+          ),
+          if ((proposal['prototype'] as String).isNotEmpty) ...[
+            const SizedBox(height: 12),
+            const Text(
+              'Прототип',
+              style: TextStyle(color: muted, fontSize: 11),
+            ),
+            const SizedBox(height: 4),
+            SelectableText(
+              proposal['prototype'],
+              style: const TextStyle(color: blue, fontSize: 12),
             ),
           ],
-        ),
-      ],
-    ),
-  );
+          const SizedBox(height: 18),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              OutlinedButton(
+                onPressed: busy || proposal['decision'] == 'rejected'
+                    ? null
+                    : () => decide(proposal, 'rejected'),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(0, 40),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
+                ),
+                child: const Text('Отклонить', style: TextStyle(fontSize: 12)),
+              ),
+              FilledButton.icon(
+                onPressed: busy || selectedTeam
+                    ? null
+                    : () => decide(proposal, 'selected'),
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size(0, 40),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
+                ),
+                icon: Icon(
+                  selectedTeam ? Icons.check_rounded : Icons.add_rounded,
+                  size: 15,
+                ),
+                label: Text(
+                  selectedTeam ? 'Выбрана' : 'Выбрать',
+                  style: const TextStyle(fontSize: 12),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _decisionPill(String decision) {
     final label = switch (decision) {
       'selected' => 'Выбрана',
