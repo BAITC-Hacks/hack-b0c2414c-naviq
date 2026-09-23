@@ -1,6 +1,8 @@
 param(
     [Parameter(Mandatory = $true)]
     [uri]$ApiBaseUrl,
+    [ValidateSet('arm64', 'arm32', 'x64', 'universal')]
+    [string]$Architecture = 'arm64',
     [switch]$LocalDemo
 )
 
@@ -18,12 +20,24 @@ if ($ApiBaseUrl.IsLoopback) {
     throw 'On a phone localhost points to the phone. Use the computer LAN address or a public server.'
 }
 
+$targetPlatform = switch ($Architecture) {
+    'arm64' { 'android-arm64' }
+    'arm32' { 'android-arm' }
+    'x64' { 'android-x64' }
+    'universal' { $null }
+}
+$buildArguments = @('build', 'apk', '--release', "--dart-define=API_BASE_URL=$($ApiBaseUrl.AbsoluteUri.TrimEnd('/'))")
+if ($targetPlatform) {
+    $buildArguments += "--target-platform=$targetPlatform"
+}
+
 $projectDirectory = Split-Path $PSScriptRoot -Parent
 $previousHttpSetting = [Environment]::GetEnvironmentVariable('NAVIQ_ALLOW_LOCAL_HTTP', 'Process')
 Push-Location $projectDirectory
 try {
     $env:NAVIQ_ALLOW_LOCAL_HTTP = if ($LocalDemo) { 'true' } else { 'false' }
-    & flutter build apk --release "--dart-define=API_BASE_URL=$($ApiBaseUrl.AbsoluteUri.TrimEnd('/'))"
+    Write-Output "Building Android APK for: $Architecture"
+    & flutter @buildArguments
     if ($LASTEXITCODE -ne 0) { throw "Android build failed (exit $LASTEXITCODE)." }
     Write-Output "APK: $projectDirectory\build\app\outputs\flutter-apk\app-release.apk"
     Write-Output 'This APK uses the development signing key and is intended for demo installation, not store publication.'
