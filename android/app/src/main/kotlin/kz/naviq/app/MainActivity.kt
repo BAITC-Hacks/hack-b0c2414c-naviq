@@ -1,4 +1,4 @@
-package com.example.task_passport
+package kz.naviq.app
 
 import io.flutter.embedding.android.FlutterActivity
 

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Keep the navigation mark within the adaptive icon's central safe area. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M32,49.5L75,32.5C76.7,31.8 78.2,33.3 77.5,35L60.3,78C59.6,79.8 57,79.6 56.6,77.8L52.8,57.2L32.2,53.4C30.4,53.1 30.2,50.3 32,49.5Z" />
+</vector>

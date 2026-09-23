@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.task_passport"
+    namespace = "kz.naviq.app"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -15,8 +15,12 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.task_passport"
+        applicationId = "kz.naviq.app"
+        // Plain HTTP is opt-in for the local hackathon demo only.
+        manifestPlaceholders["allowLocalHttp"] = providers
+            .environmentVariable("NAVIQ_ALLOW_LOCAL_HTTP")
+            .orElse("false")
+            .get()
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
@@ -31,8 +35,7 @@ android {
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
+            // Installable demo APK. Store distribution requires a private release key.
             signingConfig = signingConfigs.getByName("debug")
         }
     }

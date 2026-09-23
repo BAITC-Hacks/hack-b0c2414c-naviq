@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Vector fallback for launchers without adaptive icon support. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#315CF5"
+        android:pathData="M30,8H78Q100,8 100,30V78Q100,100 78,100H30Q8,100 8,78V30Q8,8 30,8Z" />
+    <path
+        android:fillColor="#537BFF"
+        android:pathData="M30,8H78Q96,8 99,23L8,66V30Q8,8 30,8Z" />
+    <path
+        android:fillColor="#3549D8"
+        android:pathData="M22,98L100,64V78Q100,100 78,100H30Q25,100 22,98Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M32,49.5L75,32.5C76.7,31.8 78.2,33.3 77.5,35L60.3,78C59.6,79.8 57,79.6 56.6,77.8L52.8,57.2L32.2,53.4C30.4,53.1 30.2,50.3 32,49.5Z" />
+</vector>
