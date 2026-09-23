@@ -449,51 +449,78 @@ class _HomeState extends State<Home> {
     );
   }
 
-  Widget _brand({bool compact = false}) => Row(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      Container(
-        width: 36,
-        height: 36,
-        decoration: BoxDecoration(
-          gradient: brandGradient,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: blue.withValues(alpha: .24),
-              blurRadius: 16,
-              offset: const Offset(0, 5),
-            ),
-          ],
-        ),
-        child: const Icon(Icons.near_me_rounded, color: Colors.white, size: 21),
-      ),
-      const SizedBox(width: 11),
-      Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'NaviQ',
-            style: TextStyle(
-              color: ink,
-              fontSize: compact ? 19 : 21,
-              fontWeight: FontWeight.w700,
-              letterSpacing: -.6,
-            ),
-          ),
-          if (!compact)
-            const Text(
-              'IDEAS INTO IMPACT',
-              style: TextStyle(
-                color: muted,
-                fontSize: 9,
-                letterSpacing: 1.6,
-                fontWeight: FontWeight.w600,
+  Widget _brand({bool compact = false}) => Tooltip(
+    message: 'На главную',
+    child: Semantics(
+      label: 'NaviQ — на главную',
+      button: true,
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(14),
+        child: InkWell(
+          key: const ValueKey('home-logo'),
+          onTap: () => navigate('catalog'),
+          borderRadius: BorderRadius.circular(14),
+          hoverColor: blue.withValues(alpha: .06),
+          focusColor: blue.withValues(alpha: .12),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 48),
+            child: ExcludeSemantics(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      gradient: brandGradient,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: blue.withValues(alpha: .24),
+                          blurRadius: 16,
+                          offset: const Offset(0, 5),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.near_me_rounded,
+                      color: Colors.white,
+                      size: 21,
+                    ),
+                  ),
+                  const SizedBox(width: 11),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'NaviQ',
+                        style: TextStyle(
+                          color: ink,
+                          fontSize: compact ? 19 : 21,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -.6,
+                        ),
+                      ),
+                      if (!compact)
+                        const Text(
+                          'IDEAS INTO IMPACT',
+                          style: TextStyle(
+                            color: muted,
+                            fontSize: 9,
+                            letterSpacing: 1.6,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
               ),
             ),
-        ],
+          ),
+        ),
       ),
-    ],
+    ),
   );
 
   Widget _sidebar() => SizedBox(
