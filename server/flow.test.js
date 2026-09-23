@@ -1,6 +1,78 @@
 const {test} = require('node:test');
 const assert = require('node:assert/strict');
+const http = require('node:http');
 const {app, db} = require('./index');
+
+test('AI uses Responses structured output and never invents draft facts', async () => {
+  const aiPayload = {
+    questions: [
+      'Кто будет пользоваться результатом?',
+      'Какие данные уже доступны команде?',
+      'По какой метрике оценить успех?',
+    ],
+    questionFields: ['users', 'data', 'success'],
+    draft: {
+      title: '', topic: '', context: 'Хотим бота для поддержки клиентов',
+      need: '', users: '', data: '', constraints: '', outcome: '',
+      success: '', contact: '', format: '',
+    },
+  };
+  let requestBody;
+  const mockAI = http.createServer((req, res) => {
+    let body = '';
+    req.on('data', chunk => body += chunk);
+    req.on('end', () => {
+      requestBody = JSON.parse(body);
+      res.writeHead(200, {'Content-Type': 'application/json'});
+      res.end(JSON.stringify({
+        id: 'resp_mock', object: 'response', created_at: 1,
+        status: 'completed', model: 'gpt-4.1-mini',
+        output: [{
+          id: 'msg_mock', type: 'message', status: 'completed', role: 'assistant',
+          content: [{type: 'output_text', annotations: [], text: JSON.stringify(aiPayload)}],
+        }],
+        usage: {input_tokens: 1, output_tokens: 1, total_tokens: 2},
+      }));
+    });
+  });
+  await new Promise(resolve => mockAI.listen(0, resolve));
+  const previousKey = process.env.OPENAI_API_KEY;
+  const previousBase = process.env.OPENAI_BASE_URL;
+  process.env.OPENAI_API_KEY = 'test-key';
+  process.env.OPENAI_BASE_URL = `http://127.0.0.1:${mockAI.address().port}/v1`;
+  const server = app.listen(0);
+  const base = `http://127.0.0.1:${server.address().port}`;
+  let id;
+  try {
+    const created = await fetch(`${base}/api/tasks`, {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({owner: 'business-1', idea: aiPayload.draft.context}),
+    });
+    id = (await created.json()).id;
+    const response = await fetch(`${base}/api/tasks/${id}/questions`, {
+      method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{}',
+    });
+    const result = await response.json();
+    assert.equal(response.status, 200);
+    assert.equal(result.task.question_source, 'ai');
+    assert.equal(result.notice, null);
+    assert.deepEqual(result.task.questions, aiPayload.questions);
+    assert.equal(result.task.fields.context, aiPayload.draft.context);
+    assert.equal(result.task.fields.success, '');
+    assert.equal(requestBody.text.format.type, 'json_schema');
+    assert.equal(requestBody.text.format.strict, true);
+  } finally {
+    if (id) db.prepare('DELETE FROM tasks WHERE id = ?').run(id);
+    if (previousKey === undefined) delete process.env.OPENAI_API_KEY;
+    else process.env.OPENAI_API_KEY = previousKey;
+    if (previousBase === undefined) delete process.env.OPENAI_BASE_URL;
+    else process.env.OPENAI_BASE_URL = previousBase;
+    await Promise.all([
+      new Promise(resolve => server.close(resolve)),
+      new Promise(resolve => mockAI.close(resolve)),
+    ]);
+  }
+});
 
 test('draft, questions, manual edit and confirmed publication', async () => {
   const server = app.listen(0);

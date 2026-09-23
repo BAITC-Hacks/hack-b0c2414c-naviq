@@ -7,6 +7,31 @@ const Database = require('better-sqlite3');
 const {rate, meaningful} = require('./rating');
 
 const FIELDS = ['title','topic','context','need','users','data','constraints','outcome','success','contact','format'];
+const QUESTION_FIELDS = FIELDS.filter(key => !['title','topic'].includes(key));
+const AI_MODEL = process.env.OPENAI_MODEL || 'gpt-4.1-mini';
+const AI_SCHEMA = {
+  type: 'object',
+  properties: {
+    questions: {
+      type: 'array', minItems: 3, maxItems: 5,
+      items: {type: 'string', minLength: 8},
+      description: 'Three to five concise questions in Russian about missing task details.'
+    },
+    questionFields: {
+      type: 'array', minItems: 3, maxItems: 5,
+      items: {type: 'string', enum: QUESTION_FIELDS},
+      description: 'The task card field filled by the answer to the question at the same index.'
+    },
+    draft: {
+      type: 'object',
+      properties: Object.fromEntries(FIELDS.map(key => [key, {type: 'string'}])),
+      required: FIELDS,
+      additionalProperties: false,
+    },
+  },
+  required: ['questions','questionFields','draft'],
+  additionalProperties: false,
+};
 const dataDir = path.join(__dirname, 'data');
 fs.mkdirSync(dataDir, { recursive: true });
 const db = new Database(path.join(dataDir, 'passport.sqlite'));
@@ -64,18 +89,39 @@ function templates(fields) {
 async function askAI(idea, fields) {
   if (!process.env.OPENAI_API_KEY) throw new Error('AI key missing');
   const OpenAI = require('openai');
-  const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY, timeout: 12000 });
-  const response = await client.chat.completions.create({
-    model: process.env.OPENAI_MODEL || 'gpt-4.1-mini',
-    response_format: {type: 'json_object'},
-    messages: [
-      {role:'system', content:'Ты помощник для составления студенческой задачи. Верни JSON: questions — массив минимум 3 конкретных уточняющих вопросов; questionFields — массив ключей поля для каждого вопроса из context,need,users,data,constraints,outcome,success,contact,format; draft — объект с полями title,topic,context,need,users,data,constraints,outcome,success,contact,format. В draft копируй только дословные фрагменты входа. Неизвестные поля оставь пустыми строками. Не рассчитывай рейтинг и не выбирай команду.'},
-      {role:'user', content:JSON.stringify({idea, knownFields:fields})}
-    ]
+  const client = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+    baseURL: process.env.OPENAI_BASE_URL || undefined,
+    timeout: 20000,
+    maxRetries: 1,
   });
-  const parsed = JSON.parse(response.choices[0].message.content);
+  const response = await client.responses.create({
+    model: AI_MODEL,
+    store: false,
+    max_output_tokens: 1200,
+    instructions: [
+      'Ты AI-помощник NaviQ для постановки реальных студенческих задач.',
+      'Проанализируй краткую идею и задай от 3 до 5 конкретных вопросов только о недостающей информации.',
+      'Каждый вопрос должен помогать заполнить одно поле карточки: context, need, users, data, constraints, outcome, success, contact или format.',
+      'Не спрашивай то, что уже явно указано. Не повторяй поля.',
+      'В draft разрешено переносить только факты и дословные фрагменты из idea. Не додумывай сроки, данные, метрики, контакты или ограничения.',
+      'Если факт неизвестен, верни пустую строку. Не рассчитывай рейтинг и не выбирай команду.',
+      'Пиши вопросы на русском языке, коротко и понятно.',
+    ].join(' '),
+    input: JSON.stringify({idea, knownFields:fields}),
+    text: {
+      format: {
+        type: 'json_schema',
+        name: 'naviq_task_questions',
+        strict: true,
+        schema: AI_SCHEMA,
+      },
+    },
+  });
+  if (response.status !== 'completed' || !response.output_text) throw new Error('Incomplete AI response');
+  const parsed = JSON.parse(response.output_text);
   if (!Array.isArray(parsed.questions) || parsed.questions.length < 3 || !parsed.questions.every(q => typeof q === 'string' && q.trim().length >= 8)) throw new Error('Invalid questions');
-  if (!Array.isArray(parsed.questionFields) || parsed.questionFields.length !== parsed.questions.length || !parsed.questionFields.every(key => FIELDS.includes(key) && key !== 'title' && key !== 'topic')) throw new Error('Invalid question fields');
+  if (!Array.isArray(parsed.questionFields) || parsed.questionFields.length !== parsed.questions.length || !parsed.questionFields.every(key => QUESTION_FIELDS.includes(key)) || new Set(parsed.questionFields).size !== parsed.questionFields.length) throw new Error('Invalid question fields');
   if (!parsed.draft || typeof parsed.draft !== 'object' || Array.isArray(parsed.draft)) throw new Error('Invalid draft');
   const draft = normalizeFields(parsed.draft);
   for (const key of FIELDS) if (draft[key] && !idea.toLocaleLowerCase().includes(draft[key].toLocaleLowerCase())) draft[key] = '';
@@ -126,7 +172,10 @@ function seedDemo() {
 }
 seedDemo();
 
-app.get('/api/health', (_req,res) => res.json({ok:true}));
+app.get('/api/health', (_req,res) => res.json({
+  ok:true,
+  ai:{configured:Boolean(process.env.OPENAI_API_KEY), model:AI_MODEL},
+}));
 app.get('/api/profiles', (_req,res) => res.json({businesses:[
   {id:'business-1',name:'Nova Market'}, {id:'business-2',name:'Qala Workshop'}, {id:'business-3',name:'City Lab'}
 ],teams:db.prepare('SELECT * FROM teams ORDER BY id').all()}));
@@ -161,7 +210,16 @@ app.post('/api/tasks/:id/questions', async (req,res) => {
   if (task.status !== 'draft') return res.status(409).json({error:'Опубликованную задачу нельзя вернуть к вопросам'});
   let questions, questionFields, fields = task.fields, source = 'ai', notice = null;
   try { const result = await askAI(task.idea, task.fields); questions = result.questions; questionFields = result.questionFields; fields = result.draft; }
-  catch { source = 'template'; const result = templates(task.fields); questions = result.questions; questionFields = result.questionFields; notice = 'ИИ сейчас недоступен. Используются шаблонные вопросы.'; }
+  catch (error) {
+    source = 'template';
+    const result = templates(task.fields);
+    questions = result.questions;
+    questionFields = result.questionFields;
+    notice = process.env.OPENAI_API_KEY
+      ? 'AI временно не ответил. Используются резервные вопросы.'
+      : 'AI-помощник не настроен. Добавьте OPENAI_API_KEY на сервере; пока используются резервные вопросы.';
+    if (process.env.NODE_ENV !== 'test') console.warn('AI fallback:', error.message);
+  }
   db.prepare('UPDATE tasks SET questions = ?, question_fields = ?, fields = ?, question_source = ? WHERE id = ?').run(JSON.stringify(questions),JSON.stringify(questionFields),JSON.stringify(fields),source,task.id);
   res.json({task:getTask(task.id),notice});
 });
@@ -225,4 +283,4 @@ app.post('/api/tasks/:id/publish', (req,res) => {
 });
 app.use((err,_req,res,_next) => res.status(500).json({error:'Ошибка сервера', detail:process.env.NODE_ENV === 'production' ? undefined : err.message}));
 if (require.main === module) app.listen(Number(process.env.PORT || 3000), () => console.log(`API on http://localhost:${process.env.PORT || 3000}`));
-module.exports = {app,db};
+module.exports = {app,db,AI_SCHEMA};

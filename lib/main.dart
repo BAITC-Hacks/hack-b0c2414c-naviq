@@ -41,6 +41,8 @@ class _HomeState extends State<Home> {
   String topic = 'Все темы', level = 'Все уровни', search = '';
   bool busy = false;
   bool inboxLoading = false;
+  bool? aiConfigured;
+  String aiModel = '';
   String? banner;
   List<dynamic> catalog = [],
       mine = [],
@@ -94,6 +96,7 @@ class _HomeState extends State<Home> {
   Future<void> refresh() async {
     try {
       final data = await api.call('GET', '/api/profiles');
+      final health = await api.call('GET', '/api/health');
       final all = await api.call('GET', '/api/tasks');
       final owned = role == 'business'
           ? await api.call('GET', '/api/tasks?owner=$profile')
@@ -105,6 +108,8 @@ class _HomeState extends State<Home> {
       setState(() {
         businesses = data['businesses'];
         teams = data['teams'];
+        aiConfigured = health['ai']?['configured'] == true;
+        aiModel = (health['ai']?['model'] ?? '').toString();
         catalog = all;
         mine = owned;
         sent = proposals;
@@ -1849,6 +1854,8 @@ class _HomeState extends State<Home> {
               ],
             ),
             const SizedBox(height: 16),
+            _aiStatus(),
+            const SizedBox(height: 16),
             const Text(
               'Расскажите, что вы хотите улучшить. Помощник уточнит детали и подготовит основу карточки.',
               style: TextStyle(color: muted, fontSize: 15, height: 1.55),
@@ -1949,6 +1956,51 @@ class _HomeState extends State<Home> {
     side: const BorderSide(color: line),
     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(99)),
   );
+  Widget _aiStatus() {
+    final connected = aiConfigured == true;
+    final checking = aiConfigured == null;
+    final color = checking
+        ? muted
+        : connected
+        ? teal
+        : const Color(0xFFB06000);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: .09),
+        borderRadius: BorderRadius.circular(99),
+        border: Border.all(color: color.withValues(alpha: .2)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            checking
+                ? Icons.sync_rounded
+                : connected
+                ? Icons.auto_awesome_rounded
+                : Icons.info_outline_rounded,
+            size: 16,
+            color: color,
+          ),
+          const SizedBox(width: 7),
+          Text(
+            checking
+                ? 'Проверяем AI'
+                : connected
+                ? 'AI подключён${aiModel.isEmpty ? '' : ' · $aiModel'}'
+                : 'AI требует настройки',
+            style: TextStyle(
+              color: color,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _guideItem(IconData icon, String title, String description) => Padding(
     padding: const EdgeInsets.only(bottom: 18),
     child: Row(
