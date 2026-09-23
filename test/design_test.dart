@@ -88,7 +88,8 @@ void main() {
       ),
     );
     expect(container.duration, Duration.zero);
-    expect(find.byType(BackdropFilter), findsNothing);
+    // The glass material must not block taps, including with reduced motion.
+    expect(find.byType(BackdropFilter), findsOneWidget);
     await tester.tap(find.text('Открыть задачу'));
     await tester.pumpAndSettle();
     expect(taps, 1);

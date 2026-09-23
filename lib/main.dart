@@ -432,7 +432,10 @@ class _HomeState extends State<Home> {
         child: desktop
             ? Row(
                 children: [
-                  _sidebar(),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(18, 18, 0, 18),
+                    child: _sidebar(),
+                  ),
                   Expanded(child: _workspace()),
                 ],
               )
@@ -463,11 +466,7 @@ class _HomeState extends State<Home> {
             ),
           ],
         ),
-        child: const Icon(
-          Icons.assignment_turned_in_outlined,
-          color: Colors.white,
-          size: 21,
-        ),
+        child: const Icon(Icons.near_me_rounded, color: Colors.white, size: 21),
       ),
       const SizedBox(width: 11),
       Column(
@@ -484,7 +483,7 @@ class _HomeState extends State<Home> {
           ),
           if (!compact)
             const Text(
-              'ЗАДАЧИ И КОМАНДЫ',
+              'IDEAS INTO IMPACT',
               style: TextStyle(
                 color: muted,
                 fontSize: 9,
@@ -501,14 +500,14 @@ class _HomeState extends State<Home> {
     width: 232,
     child: LiquidGlass(
       blur: true,
-      radius: 0,
+      radius: 28,
       padding: EdgeInsets.zero,
       child: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(26, 31, 20, 43),
+              padding: const EdgeInsets.fromLTRB(25, 28, 20, 40),
               child: _brand(),
             ),
             const Padding(
@@ -516,7 +515,7 @@ class _HomeState extends State<Home> {
               child: Text(
                 'ПРОСТРАНСТВО',
                 style: TextStyle(
-                  color: Color(0xFF9AA0AA),
+                  color: muted,
                   fontSize: 10,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 1.4,
@@ -540,41 +539,48 @@ class _HomeState extends State<Home> {
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                     colors: [
-                      Color(0xFFDCE8FF),
-                      Color(0xFFEBE3FF),
-                      Color(0xFFFCE6E4),
+                      Color(0xFF1E355A),
+                      Color(0xFF234C7A),
+                      Color(0xFF266F83),
                     ],
                   ),
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: Colors.white),
+                  border: Border.all(color: const Color(0x667BBAE3)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Icon(
                       Icons.auto_awesome_outlined,
-                      color: blue,
+                      color: Color(0xFFB6F2FF),
                       size: 24,
                     ),
                     const SizedBox(height: 13),
                     const Text(
-                      'От идеи — к результату',
+                      'У каждой идеи\nесть следующий шаг.',
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
-                        fontSize: 14,
+                        fontSize: 17,
+                        color: Colors.white,
+                        height: 1.3,
                         letterSpacing: -.2,
                       ),
                     ),
                     const SizedBox(height: 7),
                     const Text(
                       'Помощник уточнит детали и соберёт понятную задачу.',
-                      style: TextStyle(color: muted, fontSize: 13, height: 1.5),
+                      style: TextStyle(
+                        color: Color(0xFFCFDEED),
+                        fontSize: 12,
+                        height: 1.6,
+                      ),
                     ),
                     if (role == 'business') ...[
                       const SizedBox(height: 12),
                       TextButton(
                         onPressed: resetCreate,
                         style: TextButton.styleFrom(
+                          foregroundColor: Colors.white,
                           padding: EdgeInsets.zero,
                           minimumSize: const Size(0, 32),
                         ),
@@ -596,11 +602,7 @@ class _HomeState extends State<Home> {
               padding: EdgeInsets.fromLTRB(27, 2, 20, 24),
               child: Text(
                 'AI SANA  /  NaviQ',
-                style: TextStyle(
-                  color: Color(0xFF9AA0AA),
-                  fontSize: 11,
-                  letterSpacing: .7,
-                ),
+                style: TextStyle(color: muted, fontSize: 11, letterSpacing: .7),
               ),
             ),
           ],
@@ -674,39 +676,44 @@ class _HomeState extends State<Home> {
     );
   }
 
-  Widget _mobileBar() => SizedBox(
-    width: double.infinity,
-    child: LiquidGlass(
-      blur: true,
-      radius: 0,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-      child: SafeArea(
-        bottom: false,
-        child: LayoutBuilder(
-          builder: (context, box) {
-            final nav = Wrap(
-              spacing: 3,
-              children: [
-                _compactNav('catalog', 'Каталог'),
-                if (role == 'business') ...[
-                  _compactNav('mine', 'Мои задачи'),
-                  _compactNav('create', 'Создать'),
-                ],
-                if (role == 'team') _compactNav('sent', 'Отклики'),
-              ],
-            );
-            if (box.maxWidth < 520) {
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _mobileBar() => Padding(
+    padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+    child: SizedBox(
+      width: double.infinity,
+      child: LiquidGlass(
+        blur: true,
+        radius: 24,
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+        child: SafeArea(
+          bottom: false,
+          child: LayoutBuilder(
+            builder: (context, box) {
+              final nav = Wrap(
+                spacing: 3,
                 children: [
-                  _brand(compact: true),
-                  const SizedBox(height: 12),
-                  nav,
+                  _compactNav('catalog', 'Каталог'),
+                  if (role == 'business') ...[
+                    _compactNav('mine', 'Мои задачи'),
+                    _compactNav('create', 'Создать'),
+                  ],
+                  if (role == 'team') _compactNav('sent', 'Отклики'),
                 ],
               );
-            }
-            return Row(children: [_brand(compact: true), const Spacer(), nav]);
-          },
+              if (box.maxWidth < 520) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _brand(compact: true),
+                    const SizedBox(height: 12),
+                    nav,
+                  ],
+                );
+              }
+              return Row(
+                children: [_brand(compact: true), const Spacer(), nav],
+              );
+            },
+          ),
         ),
       ),
     ),
@@ -726,7 +733,15 @@ class _HomeState extends State<Home> {
 
   Widget _workspace() => Column(
     children: [
-      _topbar(),
+      Padding(
+        padding: EdgeInsets.fromLTRB(
+          MediaQuery.sizeOf(context).width >= 980 ? 26 : 12,
+          MediaQuery.sizeOf(context).width >= 980 ? 18 : 10,
+          MediaQuery.sizeOf(context).width >= 980 ? 26 : 12,
+          0,
+        ),
+        child: _topbar(),
+      ),
       if (busy)
         const LinearProgressIndicator(
           minHeight: 2,
@@ -741,9 +756,9 @@ class _HomeState extends State<Home> {
               constraints: const BoxConstraints(maxWidth: 1300),
               child: Padding(
                 padding: EdgeInsets.fromLTRB(
-                  MediaQuery.sizeOf(context).width > 1100 ? 38 : 22,
-                  30,
-                  MediaQuery.sizeOf(context).width > 1100 ? 38 : 22,
+                  MediaQuery.sizeOf(context).width > 1100 ? 30 : 22,
+                  28,
+                  MediaQuery.sizeOf(context).width > 1100 ? 30 : 22,
                   54,
                 ),
                 child: Column(
@@ -772,8 +787,8 @@ class _HomeState extends State<Home> {
 
   Widget _topbar() => LiquidGlass(
     blur: true,
-    radius: 0,
-    padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 16),
+    radius: 24,
+    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 13),
     child: LayoutBuilder(
       builder: (context, box) {
         final picker = SizedBox(
@@ -789,7 +804,7 @@ class _HomeState extends State<Home> {
             ),
             borderRadius: BorderRadius.circular(18),
             decoration: InputDecoration(
-              fillColor: Colors.white,
+              fillColor: Colors.white.withValues(alpha: .45),
               prefixIcon: box.maxWidth > 440
                   ? Padding(
                       padding: const EdgeInsets.all(10),
@@ -846,7 +861,7 @@ class _HomeState extends State<Home> {
               const Icon(Icons.workspaces_outline, size: 18, color: muted),
               const SizedBox(width: 9),
               const Text(
-                'Рабочее пространство',
+                'Ваше пространство возможностей',
                 style: TextStyle(color: muted, fontSize: 13),
               ),
               const Spacer(),
@@ -975,51 +990,98 @@ class _HomeState extends State<Home> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _catalogHero(ready),
-        const SizedBox(height: 28),
-        LayoutBuilder(
-          builder: (context, box) {
-            final query = TextField(
-              controller: searchInput,
-              onChanged: (value) => setState(() => search = value),
-              decoration: InputDecoration(
-                fillColor: Colors.white,
-                prefixIcon: const Icon(
-                  Icons.search_rounded,
-                  size: 23,
-                  color: muted,
-                ),
-                hintText: 'Какую задачу вы ищете?',
-                suffixIcon: search.isEmpty
-                    ? null
-                    : IconButton(
-                        tooltip: 'Очистить поиск',
-                        onPressed: () {
-                          searchInput.clear();
-                          setState(() => search = '');
-                        },
-                        icon: const Icon(Icons.close_rounded, size: 18),
-                      ),
+        Row(
+          children: [
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Каталог задач',
+                    style: TextStyle(
+                      fontSize: 23,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -.6,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    'Найдите проект, в котором ваш талант станет результатом.',
+                    style: TextStyle(color: muted, fontSize: 12),
+                  ),
+                ],
               ),
-            );
-            final readiness = _dropdown(
-              level,
-              levels,
-              (v) => setState(() => level = v),
-            );
-            if (box.maxWidth < 520) {
-              return Column(
-                children: [query, const SizedBox(height: 10), readiness],
+            ),
+            const SizedBox(width: 12),
+            IconButton.outlined(
+              tooltip: 'Как работает NaviQ',
+              onPressed: _showHowItWorks,
+              icon: const Icon(
+                Icons.info_outline_rounded,
+                size: 19,
+                color: blue,
+              ),
+              style: IconButton.styleFrom(
+                side: const BorderSide(color: Colors.white),
+                backgroundColor: Colors.white54,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 23),
+        _catalogHero(ready),
+        const SizedBox(height: 23),
+        LiquidGlass(
+          blur: true,
+          radius: 22,
+          padding: const EdgeInsets.all(8),
+          child: LayoutBuilder(
+            builder: (context, box) {
+              final query = TextField(
+                controller: searchInput,
+                onChanged: (value) => setState(() => search = value),
+                decoration: InputDecoration(
+                  fillColor: Colors.transparent,
+                  enabledBorder: const OutlineInputBorder(
+                    borderSide: BorderSide.none,
+                  ),
+                  prefixIcon: const Icon(
+                    Icons.search_rounded,
+                    size: 23,
+                    color: muted,
+                  ),
+                  hintText: 'Какую задачу вы ищете?',
+                  suffixIcon: search.isEmpty
+                      ? null
+                      : IconButton(
+                          tooltip: 'Очистить поиск',
+                          onPressed: () {
+                            searchInput.clear();
+                            setState(() => search = '');
+                          },
+                          icon: const Icon(Icons.close_rounded, size: 18),
+                        ),
+                ),
               );
-            }
-            return Row(
-              children: [
-                Expanded(child: query),
-                const SizedBox(width: 12),
-                SizedBox(width: 204, child: readiness),
-              ],
-            );
-          },
+              final readiness = _dropdown(
+                level,
+                levels,
+                (v) => setState(() => level = v),
+              );
+              if (box.maxWidth < 520) {
+                return Column(
+                  children: [query, const SizedBox(height: 10), readiness],
+                );
+              }
+              return Row(
+                children: [
+                  Expanded(child: query),
+                  const SizedBox(width: 12),
+                  SizedBox(width: 204, child: readiness),
+                ],
+              );
+            },
+          ),
         ),
         const SizedBox(height: 16),
         Wrap(
@@ -1056,7 +1118,7 @@ class _HomeState extends State<Home> {
             );
           }).toList(),
         ),
-        const SizedBox(height: 28),
+        const SizedBox(height: 24),
         Row(
           children: [
             Text(
@@ -1123,18 +1185,20 @@ class _HomeState extends State<Home> {
                   : box.maxWidth >= 580
                   ? 2
                   : 1;
-              return GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: filtered.length,
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: columns,
-                  mainAxisSpacing: 20,
-                  crossAxisSpacing: 20,
-                  mainAxisExtent: 346,
+              return BackdropGroup(
+                child: GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: filtered.length,
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: columns,
+                    mainAxisSpacing: 18,
+                    crossAxisSpacing: 18,
+                    mainAxisExtent: 338,
+                  ),
+                  itemBuilder: (context, i) =>
+                      _taskCard(Map<String, dynamic>.from(filtered[i])),
                 ),
-                itemBuilder: (context, i) =>
-                    _taskCard(Map<String, dynamic>.from(filtered[i])),
               );
             },
           ),
@@ -1144,114 +1208,279 @@ class _HomeState extends State<Home> {
 
   Widget _catalogHero(int ready) => LayoutBuilder(
     builder: (context, box) {
-      final wide = box.maxWidth >= 780;
+      final wide = box.maxWidth >= 600;
       final narrow = box.maxWidth < 500;
-      return Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(30),
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFFD5E4FF), Color(0xFFE1D9FC), Color(0xFFD1F0EB)],
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: violet.withValues(alpha: .1),
-              blurRadius: 35,
-              offset: const Offset(0, 12),
+      return LiquidGlass(
+        blur: true,
+        radius: 32,
+        opacity: narrow ? .6 : .42,
+        tint: const Color(0xFF4197C4),
+        padding: EdgeInsets.zero,
+        child: Stack(
+          children: [
+            Positioned(
+              right: -70,
+              top: -90,
+              width: 490,
+              height: 470,
+              child: IgnorePointer(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: RadialGradient(
+                      colors: [
+                        const Color(0xFF6BAFCF).withValues(alpha: .22),
+                        Colors.transparent,
+                      ],
+                    ),
+                  ),
+                ),
+              ),
             ),
-          ],
-        ),
-        child: LiquidGlass(
-          blur: true,
-          radius: 30,
-          tint: violet,
-          padding: EdgeInsets.all(narrow ? 22 : 30),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: .76),
-                        borderRadius: BorderRadius.circular(99),
-                        border: Border.all(color: Colors.white),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.auto_awesome_rounded,
-                            size: 14,
-                            color: violet,
+            Padding(
+              padding: EdgeInsets.fromLTRB(
+                narrow ? 24 : 36,
+                narrow ? 27 : 34,
+                narrow ? 24 : 28,
+                narrow ? 27 : 30,
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
                           ),
-                          SizedBox(width: 7),
-                          Text(
-                            'ИДЕИ ВСТРЕЧАЮТ ТАЛАНТЫ',
-                            style: TextStyle(
-                              color: violet,
-                              fontSize: 9,
-                              letterSpacing: 1.15,
-                              fontWeight: FontWeight.w700,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: .54),
+                            borderRadius: BorderRadius.circular(99),
+                            border: Border.all(color: Colors.white),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.blur_on_rounded,
+                                size: 14,
+                                color: teal,
+                              ),
+                              SizedBox(width: 7),
+                              Text(
+                                'СОЗДАЁМ БОЛЬШЕЕ ВМЕСТЕ',
+                                style: TextStyle(
+                                  color: teal,
+                                  fontSize: 9,
+                                  letterSpacing: 1.15,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        Text.rich(
+                          const TextSpan(
+                            children: [
+                              TextSpan(text: 'От идеи\n'),
+                              TextSpan(
+                                text: 'к большему.',
+                                style: TextStyle(color: blue),
+                              ),
+                            ],
+                          ),
+                          style: TextStyle(
+                            fontSize: narrow
+                                ? 39
+                                : box.maxWidth >= 900
+                                ? 54
+                                : 44,
+                            height: 1.06,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: -2.1,
+                            color: ink,
+                          ),
+                        ),
+                        const SizedBox(height: 15),
+                        const Text(
+                          'Бизнес делится задачами. Команды находят\nпрактику. NaviQ помогает сделать первый шаг.',
+                          style: TextStyle(
+                            color: muted,
+                            fontSize: 13,
+                            height: 1.55,
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        Wrap(
+                          spacing: 9,
+                          runSpacing: 9,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            if (role == 'business')
+                              _primaryGlassAction(
+                                'Создать задачу',
+                                Icons.add_rounded,
+                                resetCreate,
+                              ),
+                            TextButton.icon(
+                              onPressed: _showHowItWorks,
+                              icon: const Icon(
+                                Icons.play_circle_outline_rounded,
+                                size: 19,
+                              ),
+                              label: const Text('Как это работает'),
+                              style: TextButton.styleFrom(
+                                foregroundColor: ink,
+                                textStyle: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
                             ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (wide) ...[
+                    const SizedBox(width: 10),
+                    SizedBox(
+                      width: box.maxWidth >= 900 ? 310 : 225,
+                      child: Column(
+                        children: [
+                          const FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: GlassOrbit(),
+                          ),
+                          const SizedBox(height: 10),
+                          Wrap(
+                            alignment: WrapAlignment.center,
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: [
+                              _heroMetric(
+                                Icons.grid_view_rounded,
+                                '${catalog.length} задач',
+                                blue,
+                              ),
+                              _heroMetric(
+                                Icons.verified_outlined,
+                                '$ready готовы к старту',
+                                teal,
+                              ),
+                            ],
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Каталог задач',
-                      style: Theme.of(context).textTheme.headlineLarge
-                          ?.copyWith(fontSize: narrow ? 30 : 38),
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'Реальные задачи. Сильные команды.\nБольшие возможности вместе.',
-                      style: TextStyle(
-                        color: muted,
-                        fontSize: 15,
-                        height: 1.55,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    Wrap(
-                      spacing: 9,
-                      runSpacing: 9,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        if (role == 'business')
-                          FilledButton.icon(
-                            onPressed: resetCreate,
-                            icon: const Icon(Icons.add_rounded, size: 18),
-                            label: const Text('Создать задачу'),
-                          ),
-                        _heroMetric(
-                          Icons.grid_view_rounded,
-                          '${catalog.length} задач',
-                          blue,
-                        ),
-                        _heroMetric(
-                          Icons.verified_outlined,
-                          '$ready готовы к старту',
-                          teal,
-                        ),
-                      ],
-                    ),
                   ],
-                ),
+                ],
               ),
-              if (wide) ...[const SizedBox(width: 20), const GlassOrbit()],
-            ],
-          ),
+            ),
+          ],
         ),
       );
     },
+  );
+
+  Widget _primaryGlassAction(String label, IconData icon, VoidCallback onTap) =>
+      DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(99),
+          gradient: const LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFF4E8DFA), Color(0xFF2261CD)],
+          ),
+          border: Border.all(color: const Color(0xFF94B9FD)),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x333378DD),
+              blurRadius: 18,
+              offset: Offset(0, 8),
+            ),
+          ],
+        ),
+        child: FilledButton.icon(
+          onPressed: onTap,
+          icon: Icon(icon, size: 18),
+          label: Text(label),
+          style: FilledButton.styleFrom(
+            backgroundColor: Colors.transparent,
+            shadowColor: Colors.transparent,
+            elevation: 0,
+          ),
+        ),
+      );
+
+  void _showHowItWorks() => showDialog<void>(
+    context: context,
+    barrierColor: const Color(0x3D1D3652),
+    builder: (dialogContext) => Dialog(
+      backgroundColor: Colors.transparent,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 460),
+        child: LiquidGlass(
+          blur: true,
+          radius: 30,
+          opacity: .83,
+          padding: const EdgeInsets.all(28),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'Ваш следующий шаг',
+                        style: TextStyle(
+                          fontSize: 23,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -.7,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: 'Закрыть',
+                      onPressed: () => Navigator.pop(dialogContext),
+                      icon: const Icon(Icons.close_rounded),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 22),
+                _guideItem(
+                  Icons.auto_awesome_rounded,
+                  '01 · Расскажите об идее',
+                  'Помощник задаст уточняющие вопросы и поможет заполнить карточку.',
+                ),
+                _guideItem(
+                  Icons.donut_large_rounded,
+                  '02 · Сделайте задачу понятной',
+                  'Рейтинг покажет, какие детали стоит добавить. Вы сами подтверждаете публикацию.',
+                ),
+                _guideItem(
+                  Icons.people_alt_outlined,
+                  '03 · Найдите свою команду',
+                  'Студенты предложат решения, а бизнес вручную выберет, с кем работать.',
+                ),
+                const SizedBox(height: 6),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: () => Navigator.pop(dialogContext),
+                    child: const Text('Всё понятно'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ),
   );
 
   Widget _heroMetric(IconData icon, String text, Color color) => Container(
@@ -1370,10 +1599,19 @@ class _HomeState extends State<Home> {
                   ],
                 ),
               ),
-              Icon(
-                Icons.north_east_rounded,
-                size: 18,
-                color: topicColor(category).withValues(alpha: .7),
+              Container(
+                width: 30,
+                height: 30,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withValues(alpha: .6),
+                  border: Border.all(color: Colors.white),
+                ),
+                child: Icon(
+                  Icons.north_east_rounded,
+                  size: 15,
+                  color: topicColor(category),
+                ),
               ),
             ],
           ),
@@ -1435,7 +1673,12 @@ class _HomeState extends State<Home> {
               ),
             ),
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 16),
+          Divider(
+            height: 1,
+            color: topicColor(category).withValues(alpha: .09),
+          ),
+          const SizedBox(height: 15),
           Row(
             children: [
               const Icon(Icons.forum_outlined, size: 15, color: muted),
@@ -1768,11 +2011,26 @@ class _HomeState extends State<Home> {
                   horizontal: 10,
                 ),
                 decoration: BoxDecoration(
-                  color: i == createStep ? Colors.white : Colors.transparent,
+                  gradient: i == createStep
+                      ? const LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [Colors.white, Color(0xFFDCEBFC)],
+                        )
+                      : null,
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
-                    color: i == createStep ? line : Colors.transparent,
+                    color: i == createStep ? Colors.white : Colors.transparent,
                   ),
+                  boxShadow: i == createStep
+                      ? const [
+                          BoxShadow(
+                            color: Color(0x12274173),
+                            blurRadius: 16,
+                            offset: Offset(0, 5),
+                          ),
+                        ]
+                      : null,
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
