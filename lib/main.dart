@@ -21,7 +21,7 @@ const levels = ['Все уровни', 'Приоритетная', 'Готова
 
 void main() => runApp(
   MaterialApp(
-    title: 'Паспорт задачи',
+    title: 'NaviQ',
     debugShowCheckedModeBanner: false,
     theme: passportTheme(),
     home: const Home(),
@@ -469,7 +469,7 @@ class _HomeState extends State<Home> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Паспорт',
+            'NaviQ',
             style: TextStyle(
               color: ink,
               fontSize: compact ? 19 : 21,
@@ -590,7 +590,7 @@ class _HomeState extends State<Home> {
             const Padding(
               padding: EdgeInsets.fromLTRB(27, 2, 20, 24),
               child: Text(
-                'AI SANA  /  NavIQ',
+                'AI SANA  /  NaviQ',
                 style: TextStyle(
                   color: Color(0xFF9AA0AA),
                   fontSize: 11,
@@ -2071,7 +2071,7 @@ class _HomeState extends State<Home> {
           children: [
             const Expanded(
               child: Text(
-                'Паспорт задачи',
+                'Карточка задачи',
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.w600,

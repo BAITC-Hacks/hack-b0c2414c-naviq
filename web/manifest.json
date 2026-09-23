@@ -1,11 +1,11 @@
 {
-    "name": "Паспорт задачи",
-    "short_name": "Паспорт",
+    "name": "NaviQ",
+    "short_name": "NaviQ",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#F5F7FB",
-    "theme_color": "#17233D",
-    "description": "Задачи бизнеса и студенческих команд.",
+    "background_color": "#F1F4FC",
+    "theme_color": "#425AE8",
+    "description": "Умная платформа задач бизнеса и студенческих команд.",
     "prefer_related_applications": false,
     "icons": [
         {
